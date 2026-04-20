@@ -1,0 +1,280 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LitConnect — Invertis University</title>
+  <script src="{% static 'js/server.js' %}"></script>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  
+</head>
+<body>
+
+<!-- ══ LOADER ══ -->
+<div id="loader">
+  <div class="ld-ring"></div>
+  <div style="text-align:center">
+    <div class="ld-logo"><em>Lit</em>Connect</div>
+    <div class="ld-univ">Invertis University &middot; Admissions</div>
+  </div>
+  <div class="ld-track"><div class="ld-bar"></div></div>
+  <div class="ld-msg" id="ld-msg">Connecting to Firebase&hellip;</div>
+</div>
+
+<!-- ══ DOC VIEWER MODAL ══ -->
+<div id="doc-modal">
+  <div class="dm-header">
+    <div class="dm-title">📄 <span id="dm-applicant-name">Documents</span></div>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <div class="dm-tabs" id="dm-tabs"></div>
+      <button class="dm-close" onclick="closeDocModal()">✕ Close</button>
+    </div>
+  </div>
+  <div class="dm-frame" id="dm-frame">
+    <div class="dm-placeholder"><span>📂</span><span style="font-size:.9rem">Select a document above</span></div>
+  </div>
+</div>
+
+<!-- ══ PIN MODAL ══ -->
+<div id="pin-overlay">
+  <div class="pin-modal" id="pin-modal">
+    <div class="pm-icon">🔐</div>
+    <div class="pm-title">Admin Access</div>
+    <div class="pm-sub">Enter your 4-digit PIN to continue</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+    <div class="keypad">
+      <button class="key" onclick="pinKey('1')">1</button>
+      <button class="key" onclick="pinKey('2')">2</button>
+      <button class="key" onclick="pinKey('3')">3</button>
+      <button class="key" onclick="pinKey('4')">4</button>
+      <button class="key" onclick="pinKey('5')">5</button>
+      <button class="key" onclick="pinKey('6')">6</button>
+      <button class="key" onclick="pinKey('7')">7</button>
+      <button class="key" onclick="pinKey('8')">8</button>
+      <button class="key" onclick="pinKey('9')">9</button>
+      <button class="key del" onclick="pinDel()">⌫</button>
+      <button class="key zero" onclick="pinKey('0')">0</button>
+    </div>
+    <div class="pin-hint">PIN: <strong>1234</strong></div>
+  </div>
+</div>
+
+<!-- ══ UTIL BAR ══ -->
+<div class="util-bar">
+  <span>📍 Invertis University, Lucknow Road, Bareilly – 243123, UP, India</span>
+  <div class="conn-wrap">
+    <div class="conn-dot" id="conn-dot"></div>
+    <span id="conn-label">Connecting…</span>
+  </div>
+</div>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="hdr-inner">
+    <div class="logo">
+      <div class="logo-icon">🎓</div>
+      <div>
+        <div class="logo-name"><em>Lit</em>Connect</div>
+        <div class="logo-tag">Invertis University · Admissions Portal</div>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-student" onclick="switchView('student')">🎒 Student</button>
+        <button class="tab-btn" id="tab-admin" onclick="requestAdmin()">🛡 Admin</button>
+      </div>
+      <button class="logout-btn" id="logout-btn" onclick="adminLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="hdr-accent"></div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main>
+
+  <!-- ── STUDENT VIEW ── -->
+  <!-- Change this line in your form -->
+<form id="view-student" class="view active" method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="hero">
+      <div>
+        <h2>Apply to<br/><span>Invertis University</span></h2>
+        <p>Fill in your details &amp; upload your documents.<br/>All data is stored securely on Firebase.</p>
+      </div>
+      <div class="hero-badge">
+        <strong>2026–27</strong>
+        Admissions Open
+        <span style="font-size:.68rem;color:rgba(255,255,255,.45)">Reviewed within 48 hours</span>
+      </div>
+    </div>
+
+    <div class="card" style="border-radius:0 0 12px 12px;border-top:none">
+      <div class="card-body">
+
+        <div class="sec-label">Personal Information</div>
+        <div class="field-row">
+          <div class="field">
+            <label for="s-name">Full Name <span class="req">*</span></label>
+            <input required type="text" id="s-name" name="name" placeholder="e.g. Bernard Chileshe"/>
+          </div>
+          <div class="field">
+            <label for="s-country">Country <span class="req">*</span></label>
+           <input required type="text" id="s-country" name="country" placeholder="e.g. Zambia"/>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="s-phone">Phone / WhatsApp <span class="req">*</span></label>
+           <input required type="tel" id="s-phone" name="phone" placeholder="+260 97 000 0000"/>
+          </div>
+          <div class="field">
+            <label for="s-email">Email Address</label>
+            <input required type="email" id="s-email" name="email" placeholder="name@email.com"/>
+          </div>
+        </div>
+        <div class="field">
+          <label for="s-course">Course Applying For <span class="req">*</span></label>
+          <select id="s-course" name="course">
+            <option value="" disabled selected>Select a course…</option>
+            <option>B.Tech Computer Science</option>
+            <option>B.Tech Electronics &amp; Communication</option>
+            <option>B.Tech Mechanical Engineering</option>
+            <option>B.Tech Civil Engineering</option>
+            <option>MBA</option><option>MCA</option><option>BCA</option>
+            <option>B.Sc IT</option><option>B.Com</option><option>Other</option>
+          </select>
+        </div>
+
+        <div class="sec-label">📎 Upload Documents</div>
+        <div class="upload-grid">
+          <div class="uz" id="uz-nrc">
+            <input required type="file" id="f-nrc" name="nrc" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="stageFile('nrc',this)"/>
+            <span class="uz-icon">🪪</span>
+            <span class="uz-label">NRC / National ID <span class="req">*</span></span>
+            <span class="uz-hint">PDF or image · max 5 MB</span>
+            <div class="uz-ok">✔ Ready to upload</div>
+            <div class="uz-prog"><div class="uz-bar" id="bar-nrc"></div></div>
+          </div>
+          <div class="uz" id="uz-transcript">
+            <input required type="file" id="f-transcript" name="transcript" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="stageFile('transcript',this)"/>
+            <span class="uz-icon">🎓</span>
+            <span class="uz-label">Academic Transcript</span>
+            <span class="uz-hint">PDF or image · max 5 MB</span>
+            <div class="uz-ok">✔ Ready to upload</div>
+            <div class="uz-prog"><div class="uz-bar" id="bar-transcript"></div></div>
+          </div>
+          <div class="uz" id="uz-photo">
+            <input required type="file" id="f-photo" name="photo" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="stageFile('photo',this)"/>
+            <span class="uz-icon">📷</span>
+            <span class="uz-label">Passport Photo</span>
+            <span class="uz-hint">PDF or image · max 5 MB</span>
+            <div class="uz-ok">✔ Ready to upload</div>
+            <div class="uz-prog"><div class="uz-bar" id="bar-photo"></div></div>
+          </div>
+          <div class="uz" id="uz-other">
+            <input required type="file" id="f-other" accept=".pdf,.jpg,.jpeg,.png,.webp" name="other" onchange="stageFile('other',this)"/>
+            <span class="uz-icon">📄</span>
+            <span class="uz-label">Other Document</span>
+            <span class="uz-hint">PDF or image · max 5 MB</span>
+            <div class="uz-ok">✔ Ready to upload</div>
+            <div class="uz-prog"><div class="uz-bar" id="bar-other"></div></div>
+          </div>
+        </div>
+
+        <!-- ══ WHATSAPP PAYMENT ══ -->
+        <div class="sec-label">💰 Application Fee Payment</div>
+        <div class="wa-pay-box">
+          <div class="wa-pay-header">
+            <div class="wa-pay-icon">💬</div>
+            <div>
+              <div class="wa-pay-title">Pay via WhatsApp</div>
+              <div class="wa-pay-sub">Send your application fee directly to our admissions team</div>
+            </div>
+          </div>
+          <div class="wa-pay-amount">💰 Application Fee: ZMW 75</div>
+          <div class="wa-pay-steps">
+            <div class="wa-pay-step">
+              <div class="wa-step-num">1</div>
+              <div class="wa-step-text">Click the button below — it opens WhatsApp with a pre-filled message to our admissions number</div>
+            </div>
+            <div class="wa-pay-step">
+              <div class="wa-step-num">2</div>
+              <div class="wa-step-text">Send the message and follow the payment instructions our team replies with</div>
+            </div>
+            <div class="wa-pay-step">
+              <div class="wa-step-num">3</div>
+              <div class="wa-step-text">Once payment is confirmed, submit your application below — our team will verify it</div>
+            </div>
+          </div>
+          <a id="wa-pay-btn" href="#" target="_blank" rel="noopener" class="btn-wa-pay">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+            Chat with Admissions on WhatsApp
+          </a>
+          <div class="wa-pay-note">📌 After clicking, complete your payment on WhatsApp before submitting this form. Our team is available Mon–Sat, 8 AM – 6 PM (IST).</div>
+        </div>
+
+        <button class="btn btn-primary" id="submit-btn" type="submit">
+          🎓 Submit Application to Invertis University
+        </button>
+
+      </div>
+    </div>
+  </form>
+
+  <!-- ── ADMIN VIEW ── -->
+  <div id="view-admin" class="view">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="ey">Admin Dashboard</div>
+        <h1>Applications</h1>
+        <p>Documents shown inline — click any thumbnail to view full screen.</p>
+      </div>
+      <div class="card-body">
+        <div class="stats-bar">
+          <div class="stat"><div class="stat-num n-all" id="st-total">—</div><div class="stat-lbl">Total</div></div>
+          <div class="stat"><div class="stat-num n-p" id="st-pend">—</div><div class="stat-lbl">Pending</div></div>
+          <div class="stat"><div class="stat-num n-a" id="st-appr">—</div><div class="stat-lbl">Approved</div></div>
+          <div class="stat"><div class="stat-num n-r" id="st-rej">—</div><div class="stat-lbl">Rejected</div></div>
+        </div>
+        <hr class="divider"/>
+        <div class="admin-toolbar">
+          <div class="filter-tabs">
+            <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+            <button class="filter-btn" onclick="setFilter('pending',this)">Pending</button>
+            <button class="filter-btn" onclick="setFilter('approved',this)">Approved</button>
+            <button class="filter-btn" onclick="setFilter('rejected',this)">Rejected</button>
+          </div>
+          <button class="btn btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+        <div id="app-list">
+          <div class="empty"><span class="icon">⏳</span>Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <strong>LitConnect</strong> · Invertis University Admissions ·
+  Powered by <a href="https://firebase.com " target="_blank">litCoin</a><br/>
+  © 2026 Invertis University, Bareilly, Uttar Pradesh, India
+</footer>
+
+<div id="toast"></div>
+
+</body>
+</html>
