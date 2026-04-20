@@ -12,6 +12,7 @@ dj-database-url==3.1.2
 Django==6.0.4
 dnspython==2.8.0
 fsspec==2026.3.0
+gunicorn==25.3.0
 h11==0.16.0
 h2==4.3.0
 hpack==4.1.0
