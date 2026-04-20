@@ -128,7 +128,13 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+# CRITICAL FIX: Set STATIC_ROOT
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Additional locations of static files
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 # Media files (User-uploaded documents)
 MEDIA_URL = '/media/'
