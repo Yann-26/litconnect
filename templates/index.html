@@ -43,32 +43,30 @@
 </div>
 
 <!-- ══ PIN MODAL ══ -->
-<div id="pin-overlay">
-  <div class="pin-modal" id="pin-modal">
+<div id="login-overlay">
+  <div class="login-modal" id="login-modal">
     <div class="pm-icon">🔐</div>
-    <div class="pm-title">Admin Access</div>
-    <div class="pm-sub">Enter your 4-digit PIN to continue</div>
-    <div class="pin-dots">
-      <div class="pin-dot" id="d0"></div>
-      <div class="pin-dot" id="d1"></div>
-      <div class="pin-dot" id="d2"></div>
-      <div class="pin-dot" id="d3"></div>
+    <div class="pm-title">Admin Login</div>
+    <div class="pm-sub">Enter your Django admin credentials</div>
+    
+    <form id="admin-login-form" onsubmit="return false;">
+      <div class="login-field">
+        <label for="admin-username">Username</label>
+        <input type="text" id="admin-username" placeholder="Enter username" autocomplete="username" />
+      </div>
+      <div class="login-field">
+        <label for="admin-password">Password</label>
+        <input type="password" id="admin-password" placeholder="Enter password" autocomplete="current-password" />
+      </div>
+      <div class="login-err" id="login-err"></div>
+      <button type="submit" class="login-btn" onclick="adminLogin()">
+        <span>🔓</span> Login to Dashboard
+      </button>
+    </form>
+    
+    <div class="login-hint">
+      <small>Use your Django admin credentials (create with <code>python manage.py createsuperuser</code>)</small>
     </div>
-    <div class="pin-err" id="pin-err"></div>
-    <div class="keypad">
-      <button class="key" onclick="pinKey('1')">1</button>
-      <button class="key" onclick="pinKey('2')">2</button>
-      <button class="key" onclick="pinKey('3')">3</button>
-      <button class="key" onclick="pinKey('4')">4</button>
-      <button class="key" onclick="pinKey('5')">5</button>
-      <button class="key" onclick="pinKey('6')">6</button>
-      <button class="key" onclick="pinKey('7')">7</button>
-      <button class="key" onclick="pinKey('8')">8</button>
-      <button class="key" onclick="pinKey('9')">9</button>
-      <button class="key del" onclick="pinDel()">⌫</button>
-      <button class="key zero" onclick="pinKey('0')">0</button>
-    </div>
-    <div class="pin-hint">PIN: <strong>1234</strong></div>
   </div>
 </div>
 

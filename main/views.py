@@ -4,6 +4,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Application
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 
 # Helper function to check if user is staff
@@ -88,3 +89,39 @@ def update_status(request, app_id):
             return JsonResponse({'status': 'error', 'message': 'Not found'}, status=404)
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+
+@csrf_exempt
+def admin_login(request):
+    """Handle admin login."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            username = data.get('username')
+            password = data.get('password')
+            
+            user = authenticate(request, username=username, password=password)
+            
+            if user is not None and user.is_staff:
+                login(request, user)
+                return JsonResponse({
+                    'status': 'success',
+                    'user': {
+                        'username': user.username,
+                        'is_staff': user.is_staff
+                    }
+                })
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid credentials or insufficient permissions'
+                }, status=401)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=400)
+
+@login_required
+def admin_logout(request):
+    """Handle admin logout."""
+    logout(request)
+    return JsonResponse({'status': 'success'})

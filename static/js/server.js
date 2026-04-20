@@ -1,16 +1,15 @@
 /* ── Configuration ── */
 const ADMISSIONS_WA = "917217077252";
-const ADMIN_PIN     = '1234';
 const DOC_KEYS      = ['nrc', 'transcript', 'photo', 'other'];
 const DOC_NAMES     = { nrc: 'NRC / National ID', transcript: 'Transcript', photo: 'Passport Photo', other: 'Other Doc' };
 const DOC_ICONS     = { nrc: '🪪', transcript: '🎓', photo: '📷', other: '📄' };
 
 /* ── State ── */
 let adminUnlocked = false;
-let pinBuf        = '';
-let filter        = 'all';
-let allApps       = [];
-let staged        = {}; // Temporarily stores File objects
+let currentUser = null;
+let filter = 'all';
+let allApps = [];
+let staged = {};
 
 /* ════════════════════════════════════════
    INIT & LOADER
@@ -23,10 +22,23 @@ window.addEventListener('DOMContentLoaded', () => {
     const studentForm = document.getElementById('view-student');
     if (studentForm) {
         studentForm.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Prevent default form submission
+            e.preventDefault();
             await submitApplication();
         });
     }
+    
+    // Add enter key support for login
+    const passwordInput = document.getElementById('admin-password');
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                adminLogin();
+            }
+        });
+    }
+    
+    // Check auth status on page load
+    checkAuthStatus();
     
     // Simulate a connection check to Django
     setTimeout(() => {
@@ -57,7 +69,7 @@ function setConn(live) {
 }
 
 /* ════════════════════════════════════════
-   CSRF HELPER (Required for Django POST)
+   CSRF HELPER
 ════════════════════════════════════════ */
 function getCookie(name) {
     let cookieValue = null;
@@ -75,7 +87,101 @@ function getCookie(name) {
 }
 
 /* ════════════════════════════════════════
-   VALIDATION FUNCTION
+   AUTHENTICATION
+════════════════════════════════════════ */
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/applications/');
+        if (response.ok) {
+            adminUnlocked = true;
+            document.getElementById('logout-btn').style.display = 'inline-flex';
+            console.log('Already logged in as admin');
+            return true;
+        }
+    } catch (err) {
+        console.log('Not authenticated');
+    }
+    return false;
+}
+
+async function adminLogin() {
+    const username = document.getElementById('admin-username').value.trim();
+    const password = document.getElementById('admin-password').value;
+    const loginBtn = document.querySelector('.login-btn');
+    const originalText = loginBtn.innerHTML;
+    
+    if (!username || !password) {
+        document.getElementById('login-err').textContent = 'Please enter both username and password';
+        return;
+    }
+    
+    loginBtn.innerHTML = '<span class="spinner"></span> Logging in...';
+    loginBtn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/login/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ username, password })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.status === 'success') {
+            adminUnlocked = true;
+            currentUser = result.user;
+            closeLogin();
+            document.getElementById('logout-btn').style.display = 'inline-flex';
+            activateView('admin');
+            toast(`Welcome back, ${result.user.username}!`, 'success');
+        } else {
+            document.getElementById('login-err').textContent = result.message || 'Login failed';
+        }
+    } catch (err) {
+        document.getElementById('login-err').textContent = 'Connection error. Please try again.';
+        console.error('Login error:', err);
+    } finally {
+        loginBtn.innerHTML = originalText;
+        loginBtn.disabled = false;
+    }
+}
+
+async function adminLogout() {
+    try {
+        await fetch('/api/logout/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+        
+        adminUnlocked = false;
+        currentUser = null;
+        document.getElementById('logout-btn').style.display = 'none';
+        switchView('student');
+        toast('Logged out successfully');
+        allApps = [];
+    } catch (err) {
+        console.error('Logout error:', err);
+    }
+}
+
+function openLogin() {
+    document.getElementById('login-err').textContent = '';
+    document.getElementById('admin-username').value = '';
+    document.getElementById('admin-password').value = '';
+    document.getElementById('login-overlay').classList.add('open');
+}
+
+function closeLogin() {
+    document.getElementById('login-overlay').classList.remove('open');
+}
+
+/* ════════════════════════════════════════
+   VALIDATION & SUBMISSION
 ════════════════════════════════════════ */
 function validateForm() {
     const name = document.getElementById('s-name').value.trim();
@@ -117,9 +223,6 @@ function validateForm() {
     return true;
 }
 
-/* ════════════════════════════════════════
-   SUBMIT APPLICATION
-════════════════════════════════════════ */
 async function submitApplication() {
     if (!validateForm()) return;
     
@@ -140,7 +243,6 @@ async function submitApplication() {
     formData.append('email', email);
     formData.append('course', course);
 
-    // Get files directly from the input elements
     const nrcFile = document.getElementById('f-nrc').files[0];
     const transcriptFile = document.getElementById('f-transcript').files[0];
     const photoFile = document.getElementById('f-photo').files[0];
@@ -150,15 +252,6 @@ async function submitApplication() {
     if (transcriptFile) formData.append('transcript', transcriptFile);
     if (photoFile) formData.append('photo', photoFile);
     if (otherFile) formData.append('other', otherFile);
-
-    // Debug: Log what we're sending
-    console.log('Submitting:', {
-        name, country, phone, email, course,
-        nrc: nrcFile?.name,
-        transcript: transcriptFile?.name,
-        photo: photoFile?.name,
-        other: otherFile?.name
-    });
 
     try {
         const response = await fetch('/api/submit/', {
@@ -171,7 +264,6 @@ async function submitApplication() {
 
         if (response.ok) {
             toast('✅ Application submitted successfully!', 'success');
-            // Reset form after successful submission
             document.getElementById('view-student').reset();
             staged = {};
             DOC_KEYS.forEach(key => {
@@ -194,7 +286,7 @@ async function submitApplication() {
 }
 
 /* ════════════════════════════════════════
-   ADMIN: DATA ACTIONS
+   ADMIN DATA ACTIONS
 ════════════════════════════════════════ */
 async function loadApps() {
     const list = document.getElementById('app-list');
@@ -202,12 +294,25 @@ async function loadApps() {
     
     try {
         const res = await fetch('/api/applications/');
+        
+        if (res.status === 403 || res.status === 401) {
+            adminUnlocked = false;
+            list.innerHTML = '<div class="empty"><span class="icon">🔒</span>Please login to view applications</div>';
+            openLogin();
+            return;
+        }
+        
         if (!res.ok) throw new Error('Could not fetch applications');
         
         allApps = await res.json();
         renderAdmin();
     } catch(err) {
-        list.innerHTML = `<div class="empty"><span class="icon">⚠️</span>${esc(err.message)}</div>`;
+        if (err.message.includes('403') || err.message.includes('401')) {
+            list.innerHTML = '<div class="empty"><span class="icon">🔒</span>Session expired. Please login again.</div>';
+            openLogin();
+        } else {
+            list.innerHTML = `<div class="empty"><span class="icon">⚠️</span>${escapeHtml(err.message)}</div>`;
+        }
     }
 }
 
@@ -226,6 +331,9 @@ async function updateStatus(id, status) {
             allApps = allApps.map(a => a.id === id ? { ...a, status } : a);
             renderAdmin();
             toast(status === 'approved' ? '✅ Approved' : '❌ Rejected');
+        } else {
+            const error = await res.json();
+            throw new Error(error.message);
         }
     } catch(e) { 
         toast('Update failed: ' + e.message, 'error'); 
@@ -233,7 +341,7 @@ async function updateStatus(id, status) {
 }
 
 /* ════════════════════════════════════════
-   FILE HANDLING & UI
+   FILE HANDLING
 ════════════════════════════════════════ */
 function stageFile(key, input) {
     const file = input.files[0];
@@ -279,10 +387,13 @@ function setTabActive(which) {
     document.getElementById('tab-' + which)?.classList.add('active');
 }
 
-function requestAdmin() { 
-    setTabActive('admin'); 
-    if (adminUnlocked) activateView('admin'); 
-    else openPin(); 
+function requestAdmin() {
+    setTabActive('admin');
+    if (adminUnlocked) {
+        activateView('admin');
+    } else {
+        openLogin();
+    }
 }
 
 function activateView(v) {
@@ -291,59 +402,6 @@ function activateView(v) {
     if (v === 'admin') loadApps();
 }
 
-function adminLogout() {
-    adminUnlocked = false;
-    pinBuf = '';
-    document.getElementById('logout-btn').style.display = 'none';
-    switchView('student');
-    toast('Logged out of admin panel');
-}
-
-/* ════════════════════════════════════════
-   PIN MODAL
-════════════════════════════════════════ */
-function openPin()  { 
-    pinBuf = ''; 
-    updDots(); 
-    document.getElementById('pin-err').textContent = ''; 
-    document.getElementById('pin-overlay').classList.add('open'); 
-}
-
-function closePin() { 
-    document.getElementById('pin-overlay').classList.remove('open'); 
-}
-
-function pinKey(d) { 
-    if (pinBuf.length >= 4) return; 
-    pinBuf += d; 
-    updDots(); 
-    if (pinBuf.length === 4) checkPin(); 
-}
-
-function pinDel() {
-    pinBuf = pinBuf.slice(0, -1);
-    updDots();
-}
-
-function updDots() { 
-    for(let i=0; i<4; i++) {
-        const dot = document.getElementById('d'+i);
-        if (dot) dot.classList.toggle('filled', i < pinBuf.length);
-    }
-}
-
-function checkPin() {
-    if (pinBuf === ADMIN_PIN) {
-        adminUnlocked = true; 
-        closePin();
-        document.getElementById('logout-btn').style.display = 'inline-flex';
-        activateView('admin');
-    } else {
-        document.getElementById('pin-err').textContent = '✕ Incorrect PIN';
-        pinBuf = ''; 
-        updDots();
-    }
-}
 /* ════════════════════════════════════════
    DOCUMENT VIEWER
 ════════════════════════════════════════ */
@@ -354,11 +412,17 @@ function openDocModal(appId, docKey) {
         return;
     }
     
-    // Get the URL - handle both naming conventions
-    const url = app[`${docKey}_url`] || app[docKey];
+    let url = app[`${docKey}_url`] || app[docKey];
     if (!url) {
         toast('Document not available', 'error');
         return;
+    }
+    
+    if (!url.startsWith('http') && !url.startsWith('//')) {
+        if (!url.startsWith('/media/')) {
+            url = '/media/' + url.replace(/^\/+/, '');
+        }
+        url = window.location.origin + url;
     }
     
     const modal = document.getElementById('doc-modal');
@@ -366,7 +430,6 @@ function openDocModal(appId, docKey) {
     
     title.textContent = `${app.name} - ${DOC_NAMES[docKey]}`;
     
-    // Create tabs for all documents of this applicant
     const tabsDiv = document.getElementById('dm-tabs');
     tabsDiv.innerHTML = DOC_KEYS.map(key => {
         const docUrl = app[`${key}_url`] || app[key];
@@ -378,9 +441,7 @@ function openDocModal(appId, docKey) {
                 </button>`;
     }).join('');
     
-    // Display the document
     viewDocument(appId, docKey);
-    
     modal.style.display = 'flex';
 }
 
@@ -388,7 +449,6 @@ function viewDocument(appId, docKey) {
     const app = allApps.find(a => String(a.id) === String(appId));
     if (!app) return;
     
-    // Get the URL
     let url = app[`${docKey}_url`] || app[docKey];
     if (!url) {
         const frame = document.getElementById('dm-frame');
@@ -399,21 +459,14 @@ function viewDocument(appId, docKey) {
         return;
     }
     
-    // If URL doesn't start with http, add the base URL
     if (!url.startsWith('http') && !url.startsWith('//')) {
-        // Make sure URL starts with /media/
         if (!url.startsWith('/media/')) {
             url = '/media/' + url.replace(/^\/+/, '');
         }
-        // Use full URL to avoid connection issues
         url = window.location.origin + url;
     }
     
-    console.log('Loading document from URL:', url); // Debug log
-    
     const frame = document.getElementById('dm-frame');
-    
-    // Get file extension
     const urlLower = url.toLowerCase();
     const isPdf = urlLower.endsWith('.pdf');
     const isImage = urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i);
@@ -455,58 +508,24 @@ function viewDocument(appId, docKey) {
     }
 }
 
-// Helper function to handle PDF errors
-function handlePdfError(iframe) {
-    const container = iframe.closest('#pdf-iframe-container');
-    const downloadDiv = document.getElementById('pdf-download-only');
-    if (container && downloadDiv) {
-        container.style.display = 'none';
-        downloadDiv.style.display = 'flex';
-    }
-}
-
-// Toggle between iframe and download view for PDFs
-function togglePdfViewer() {
-    const iframeContainer = document.getElementById('pdf-iframe-container');
-    const downloadOnly = document.getElementById('pdf-download-only');
-    const toggleBtn = document.getElementById('toggle-pdf-btn');
-    
-    if (iframeContainer && downloadOnly) {
-        if (iframeContainer.style.display === 'none') {
-            iframeContainer.style.display = 'block';
-            downloadOnly.style.display = 'none';
-            if (toggleBtn) toggleBtn.textContent = '📖 Hide Preview';
-        } else {
-            iframeContainer.style.display = 'none';
-            downloadOnly.style.display = 'flex';
-            if (toggleBtn) toggleBtn.textContent = '📖 Show Preview';
-        }
-    }
-}
-
 function closeDocModal() {
     document.getElementById('doc-modal').style.display = 'none';
     document.getElementById('dm-frame').innerHTML = '<div class="dm-placeholder"><span>📂</span><span style="font-size:.9rem">Select a document above</span></div>';
 }
 
-// Helper function to escape HTML
-function escapeHtml(str) {
-    if (!str) return '';
-    return String(str).replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
+/* ════════════════════════════════════════
+   RENDER ADMIN LIST
+════════════════════════════════════════ */
+function setFilter(f, btn) {
+    filter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    renderAdmin();
 }
 
-/* ════════════════════════════════════════
-   RENDER ADMIN LIST WITH IMPROVED PREVIEWS
-════════════════════════════════════════ */
 function renderAdmin() {
     const apps = filter === 'all' ? allApps : allApps.filter(a => a.status === filter);
     
-    // Stats update
     document.getElementById('st-total').textContent = allApps.length;
     document.getElementById('st-pend').textContent  = allApps.filter(a => a.status === 'pending').length;
     document.getElementById('st-appr').textContent  = allApps.filter(a => a.status === 'approved').length;
@@ -523,46 +542,42 @@ function renderAdmin() {
         const waNum   = (a.phone || '').replace(/\D/g, '');
         const waHref  = `https://wa.me/${waNum}?text=Hello ${encodeURIComponent(a.name)}`;
 
-    // In renderAdmin(), when creating thumbnails
-const thumbs = DOC_KEYS.map(k => {
-    let url = a[`${k}_url`] || a[k];
-    let previewHtml = '';
-    
-    if (url) {
-        // Fix the URL
-        if (!url.startsWith('http') && !url.startsWith('//')) {
-            if (!url.startsWith('/media/')) {
-                url = '/media/' + url.replace(/^\/+/, '');
+        const thumbs = DOC_KEYS.map(k => {
+            let url = a[`${k}_url`] || a[k];
+            let previewHtml = '';
+            
+            if (url) {
+                if (!url.startsWith('http') && !url.startsWith('//')) {
+                    if (!url.startsWith('/media/')) {
+                        url = '/media/' + url.replace(/^\/+/, '');
+                    }
+                    url = window.location.origin + url;
+                }
+                
+                const urlLower = url.toLowerCase();
+                const isImage = urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i);
+                const isPdf = urlLower.endsWith('.pdf');
+                
+                if (isImage) {
+                    previewHtml = `<div class="dt-preview"><img src="${escapeHtml(url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'dt-preview missing-prev\'><span class=\'miss-icon\'>🖼️</span><span>No image</span></div>'"></div>`;
+                } else if (isPdf) {
+                    previewHtml = `<div class="dt-preview pdf-prev"><span class="pdf-icon">📄</span><span>PDF</span></div>`;
+                } else {
+                    previewHtml = `<div class="dt-preview pdf-prev"><span class="pdf-icon">📎</span><span>File</span></div>`;
+                }
+            } else {
+                previewHtml = `<div class="dt-preview missing-prev"><span class="miss-icon">❌</span><span>Missing</span></div>`;
             }
-            url = window.location.origin + url;
-        }
-        
-        const urlLower = url.toLowerCase();
-        const isImage = urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i);
-        const isPdf = urlLower.endsWith('.pdf');
-        
-        if (isImage) {
-            previewHtml = `<div class="dt-preview"><img src="${escapeHtml(url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'dt-preview missing-prev\'><span class=\'miss-icon\'>🖼️</span><span>No image</span></div>'"></div>`;
-        } else if (isPdf) {
-            previewHtml = `<div class="dt-preview pdf-prev"><span class="pdf-icon">📄</span><span>PDF</span></div>`;
-        } else {
-            previewHtml = `<div class="dt-preview pdf-prev"><span class="pdf-icon">📎</span><span>File</span></div>`;
-        }
-    } else {
-        previewHtml = `<div class="dt-preview missing-prev"><span class="miss-icon">❌</span><span>Missing</span></div>`;
-    }
-    
-    const clickUrl = url ? (url.startsWith('http') ? url : window.location.origin + url) : null;
-    const clickAttr = clickUrl ? `onclick="openDocModal('${a.id}','${k}')"` : '';
-    
-    return `
-        <div class="doc-thumb" ${clickAttr}>
-            <div class="dt-label">${DOC_ICONS[k]} ${DOC_NAMES[k]}</div>
-            ${previewHtml}
-            ${clickUrl ? '<div class="dt-open"><button class="dt-open-btn">🔍 View</button></div>' : ''}
-        </div>
-    `;
-}).join('');
+            
+            const clickAttr = url ? `onclick="openDocModal('${a.id}','${k}')"` : '';
+            return `
+                <div class="doc-thumb" ${clickAttr}>
+                    <div class="dt-label">${DOC_ICONS[k]} ${DOC_NAMES[k]}</div>
+                    ${previewHtml}
+                    ${url ? '<div class="dt-open"><button class="dt-open-btn">🔍 View</button></div>' : ''}
+                </div>
+            `;
+        }).join('');
 
         return `
         <div class="app-card s-${a.status}">
@@ -590,10 +605,40 @@ const thumbs = DOC_KEYS.map(k => {
     }).join('');
 }
 
+function exportCSV() {
+    if (!allApps.length) {
+        toast('No data to export', 'error');
+        return;
+    }
+    
+    const headers = ['Name', 'Country', 'Phone', 'Email', 'Course', 'Status', 'Created At'];
+    const rows = allApps.map(a => [
+        a.name, a.country, a.phone, a.email, a.course, a.status, a.created_at
+    ]);
+    
+    const csvContent = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `applications_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('CSV exported successfully');
+}
+
 /* ════════════════════════════════════════
-   UTILS
+   UTILITIES
 ════════════════════════════════════════ */
-const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
+}
 
 function toast(msg, type='') {
     const t = document.getElementById('toast');
