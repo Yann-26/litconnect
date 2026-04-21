@@ -56,20 +56,47 @@ def get_applications(request):
             'created_at': app.created_at.isoformat(),
         }
         
-        # Add file URLs - use relative paths
+        # Add file URLs with existence check (prevents future 404 errors)
         if app.nrc and app.nrc.name:
-            app_dict['nrc_url'] = app.nrc.url
+            try:
+                if app.nrc.storage.exists(app.nrc.name):
+                    app_dict['nrc_url'] = app.nrc.url
+                else:
+                    app_dict['nrc_url'] = None
+            except:
+                app_dict['nrc_url'] = None
+                
         if app.transcript and app.transcript.name:
-            app_dict['transcript_url'] = app.transcript.url
+            try:
+                if app.transcript.storage.exists(app.transcript.name):
+                    app_dict['transcript_url'] = app.transcript.url
+                else:
+                    app_dict['transcript_url'] = None
+            except:
+                app_dict['transcript_url'] = None
+                
         if app.photo and app.photo.name:
-            app_dict['photo_url'] = app.photo.url
+            try:
+                if app.photo.storage.exists(app.photo.name):
+                    app_dict['photo_url'] = app.photo.url
+                else:
+                    app_dict['photo_url'] = None
+            except:
+                app_dict['photo_url'] = None
+                
         if app.other and app.other.name:
-            app_dict['other_url'] = app.other.url
+            try:
+                if app.other.storage.exists(app.other.name):
+                    app_dict['other_url'] = app.other.url
+                else:
+                    app_dict['other_url'] = None
+            except:
+                app_dict['other_url'] = None
             
         apps.append(app_dict)
     
     return JsonResponse(apps, safe=False)
-
+    
 
 @login_required
 @user_passes_test(is_staff)
