@@ -151,7 +151,7 @@ STORAGES = {
             "endpoint_url": SUPABASE_BUCKET_ENDPOINT_URL,
             "region_name": SUPABASE_BUCKET_REGION,
             "default_acl": "public-read",  # Important for public bucket access
-            "querystring_auth": False,      # Generates simple public URLs
+            "querystring_auth": True,      # Generates simple public URLs
         },
     },
     "staticfiles": {
