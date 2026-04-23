@@ -38,7 +38,6 @@ def submit_application(request):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=400)
 
-
 @login_required
 @user_passes_test(is_staff)
 def get_applications(request):
@@ -56,47 +55,34 @@ def get_applications(request):
             'created_at': app.created_at.isoformat(),
         }
         
-        # Add file URLs with existence check (prevents future 404 errors)
-        if app.nrc and app.nrc.name:
-            try:
-                if app.nrc.storage.exists(app.nrc.name):
-                    app_dict['nrc_url'] = app.nrc.url
-                else:
-                    app_dict['nrc_url'] = None
-            except:
-                app_dict['nrc_url'] = None
-                
-        if app.transcript and app.transcript.name:
-            try:
-                if app.transcript.storage.exists(app.transcript.name):
-                    app_dict['transcript_url'] = app.transcript.url
-                else:
-                    app_dict['transcript_url'] = None
-            except:
-                app_dict['transcript_url'] = None
-                
-        if app.photo and app.photo.name:
-            try:
-                if app.photo.storage.exists(app.photo.name):
-                    app_dict['photo_url'] = app.photo.url
-                else:
-                    app_dict['photo_url'] = None
-            except:
-                app_dict['photo_url'] = None
-                
-        if app.other and app.other.name:
-            try:
-                if app.other.storage.exists(app.other.name):
-                    app_dict['other_url'] = app.other.url
-                else:
-                    app_dict['other_url'] = None
-            except:
-                app_dict['other_url'] = None
+        # For S3 storage, we can directly return the URL.
+        # The .url property will generate a public URL if the bucket is public
+        # or a signed URL if querystring_auth=True.
+        # We skip existence check to avoid extra API calls (faster).
+        if app.nrc:
+            app_dict['nrc_url'] = app.nrc.url
+        else:
+            app_dict['nrc_url'] = None
+            
+        if app.transcript:
+            app_dict['transcript_url'] = app.transcript.url
+        else:
+            app_dict['transcript_url'] = None
+            
+        if app.photo:
+            app_dict['photo_url'] = app.photo.url
+        else:
+            app_dict['photo_url'] = None
+            
+        if app.other:
+            app_dict['other_url'] = app.other.url
+        else:
+            app_dict['other_url'] = None
             
         apps.append(app_dict)
     
     return JsonResponse(apps, safe=False)
-    
+
 
 @login_required
 @user_passes_test(is_staff)

@@ -4,6 +4,8 @@ import certifi
 import dj_database_url
 from dotenv import load_dotenv
 
+import litconnect
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -36,6 +38,7 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
     'main.apps.MainConfig',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -129,6 +132,33 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+# Configure S3 Storage for media files
+SUPABASE_BUCKET_NAME=os.environ.get('SUPABASE_BUCKET_NAME', 'litconnect')
+SUPABASE_BUCKET_ENDPOINT_URL=os.environ.get('SUPABASE_BUCKET_ENDPOINT_URL')
+SUPABASE_BUCKET_ACCESS_KEY=os.environ.get('SUPABASE_BUCKET_ACCESS_KEY')
+SUPABASE_BUCKET_SECRET_KEY=os.environ.get('SUPABASE_BUCKET_SECRET_KEY')
+SUPABASE_BUCKET_REGION=os.environ.get('SUPABASE_BUCKET_REGION', 'ap-southeast-1')
+
+
+# File Storage Settings using S3-compatible backend
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "access_key": SUPABASE_BUCKET_ACCESS_KEY,
+            "secret_key": SUPABASE_BUCKET_SECRET_KEY,
+            "bucket_name": SUPABASE_BUCKET_NAME,
+            "endpoint_url": SUPABASE_BUCKET_ENDPOINT_URL,
+            "region_name": SUPABASE_BUCKET_REGION,
+            "default_acl": "public-read",  # Important for public bucket access
+            "querystring_auth": False,      # Generates simple public URLs
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 # CRITICAL FIX: Set STATIC_ROOT
@@ -142,9 +172,6 @@ STATICFILES_DIRS = [
 # Media files (User-uploaded documents)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# WhiteNoise compression and caching
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Supabase configuration for direct uploads (optional)
 SUPABASE_URL = os.environ.get('SUPABASE_URL')

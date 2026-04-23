@@ -547,13 +547,9 @@ function renderAdmin() {
             let previewHtml = '';
             
             if (url) {
-                if (!url.startsWith('http') && !url.startsWith('//')) {
-                    if (!url.startsWith('/media/')) {
-                        url = '/media/' + url.replace(/^\/+/, '');
-                    }
-                    url = window.location.origin + url;
-                }
-                
+                // For S3, the URL is already absolute (starts with https://)
+                // No need to add /media/ or window.location.origin
+                // Just use as-is
                 const urlLower = url.toLowerCase();
                 const isImage = urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i);
                 const isPdf = urlLower.endsWith('.pdf');

@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LITCONNECT — MVM Institute of Engineering & Technology</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+ 
+    /* ══════════════════════════════════════════
+       MVM BRAND TOKENS
+       Primary  : #8B1A1A  (deep crimson red)
+       Secondary: #C0392B  (bright red)
+       Gold     : #C9A84C  (academic gold)
+       Dark     : #1C1C1E
+    ══════════════════════════════════════════ */
+    :root{
+      --red:      #8B1A1A;
+      --red2:     #C0392B;
+      --red3:     #e84545;
+      --red-dark: #5c0f0f;
+      --gold:     #C9A84C;
+      --gold2:    #f0c040;
+      --gold-dim: rgba(201,168,76,.15);
+      --dark:     #1C1C1E;
+      --dark2:    #2c2c2e;
+      --white:    #ffffff;
+      --offwhite: #faf9f7;
+      --cream:    #f5f0e8;
+      --border:   #e8e0d5;
+      --border2:  #d4c8b8;
+      --text:     #1C1C1E;
+      --text2:    #4a4540;
+      --text3:    #9a9088;
+      --green:    #16a34a;
+      --green-dim:rgba(22,163,74,.1);
+      --blue:     #1a4a8a;
+      --wa:       #25d366;
+      --wa-dk:    #128c3e;
+      --amber:    #d97706;
+      --amber-dim:rgba(217,119,6,.1);
+      --sh-sm:    0 2px 8px rgba(139,26,26,.08);
+      --sh:       0 6px 28px rgba(139,26,26,.12);
+      --sh-lg:    0 16px 56px rgba(139,26,26,.18);
+      --r:        14px;
+    }
+ 
+    body{
+      background:var(--offwhite);
+      color:var(--text);
+      font-family:'Inter',sans-serif;
+      min-height:100vh;
+      display:flex;flex-direction:column;
+    }
+ 
+    /* ════════════════════════════════════════════════════
+       EPIC LOADING SCREEN
+       Animated particles + crest emblem + wave reveal
+    ════════════════════════════════════════════════════ */
+    #loader{
+      position:fixed;inset:0;z-index:9999;overflow:hidden;
+      background:linear-gradient(135deg,var(--red-dark) 0%,var(--red) 55%,var(--red2) 100%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      transition:opacity .7s ease,visibility .7s ease;
+    }
+    #loader.gone{opacity:0;visibility:hidden;pointer-events:none}
+ 
+    /* Animated background dots */
+    .ld-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+    .ld-dot{
+      position:absolute;border-radius:50%;
+      background:rgba(201,168,76,.12);
+      animation:ldFloat linear infinite;
+    }
+    .ld-dot:nth-child(1) {width:300px;height:300px;top:-80px;left:-60px;animation-duration:18s;animation-delay:0s}
+    .ld-dot:nth-child(2) {width:200px;height:200px;top:20%;right:-50px;animation-duration:14s;animation-delay:-4s}
+    .ld-dot:nth-child(3) {width:150px;height:150px;bottom:10%;left:10%;animation-duration:20s;animation-delay:-8s}
+    .ld-dot:nth-child(4) {width:80px;height:80px;bottom:25%;right:15%;animation-duration:12s;animation-delay:-2s}
+    .ld-dot:nth-child(5) {width:50px;height:50px;top:40%;left:30%;animation-duration:9s;animation-delay:-6s}
+    @keyframes ldFloat{
+      0%  {transform:translate(0,0) scale(1)}
+      33% {transform:translate(20px,-30px) scale(1.05)}
+      66% {transform:translate(-15px,20px) scale(.95)}
+      100%{transform:translate(0,0) scale(1)}
+    }
+ 
+    /* Gold grid lines */
+    .ld-grid{
+      position:absolute;inset:0;pointer-events:none;
+      background-image:
+        linear-gradient(rgba(201,168,76,.06) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(201,168,76,.06) 1px,transparent 1px);
+      background-size:60px 60px;
+    }
+ 
+    /* Centre crest circle */
+    .ld-crest{
+      position:relative;z-index:2;
+      width:110px;height:110px;border-radius:50%;
+      background:rgba(255,255,255,.07);
+      border:2px solid rgba(201,168,76,.4);
+      display:flex;align-items:center;justify-content:center;
+      font-size:3rem;
+      box-shadow:
+        0 0 0 8px rgba(201,168,76,.08),
+        0 0 0 18px rgba(201,168,76,.04),
+        0 0 60px rgba(201,168,76,.2);
+      animation:crestPulse 2.4s ease-in-out infinite;
+    }
+    @keyframes crestPulse{
+      0%,100%{box-shadow:0 0 0 8px rgba(201,168,76,.08),0 0 0 18px rgba(201,168,76,.04),0 0 60px rgba(201,168,76,.2)}
+      50%    {box-shadow:0 0 0 14px rgba(201,168,76,.14),0 0 0 28px rgba(201,168,76,.07),0 0 90px rgba(201,168,76,.35)}
+    }
+ 
+    /* Spinning outer ring */
+    .ld-spin-ring{
+      position:absolute;inset:-12px;border-radius:50%;
+      border:2px dashed rgba(201,168,76,.3);
+      animation:ldSpin 8s linear infinite;
+    }
+    .ld-spin-ring2{
+      position:absolute;inset:-22px;border-radius:50%;
+      border:1px solid rgba(255,255,255,.1);
+      animation:ldSpin 14s linear infinite reverse;
+    }
+    @keyframes ldSpin{to{transform:rotate(360deg)}}
+ 
+    /* Text block */
+    .ld-text{position:relative;z-index:2;text-align:center;margin-top:.3rem}
+    .ld-name{
+      font-family:'Playfair Display',serif;
+      font-size:2rem;font-weight:900;color:#fff;
+      letter-spacing:.02em;line-height:1.1;
+      animation:ldFadeUp .8s .2s ease both;
+    }
+    .ld-name span{color:var(--gold2)}
+    .ld-full{
+      font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;
+      color:rgba(255,255,255,.5);margin-top:.45rem;
+      animation:ldFadeUp .8s .4s ease both;
+    }
+    .ld-tagline{
+      font-size:.75rem;color:rgba(255,255,255,.35);
+      margin-top:.3rem;font-style:italic;
+      animation:ldFadeUp .8s .5s ease both;
+    }
+    @keyframes ldFadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+ 
+    /* Progress track */
+    .ld-progress{
+      position:relative;z-index:2;
+      width:220px;margin-top:.8rem;
+      animation:ldFadeUp .8s .6s ease both;
+    }
+    .ld-track{
+      height:3px;background:rgba(255,255,255,.1);
+      border-radius:3px;overflow:hidden;
+    }
+    .ld-bar{
+      height:100%;
+      background:linear-gradient(90deg,var(--gold),var(--gold2),var(--gold));
+      background-size:200% 100%;
+      border-radius:3px;
+      animation:ldFill 2.8s ease forwards, ldShimmer 1.5s linear .5s infinite;
+    }
+    @keyframes ldFill{0%{width:0%}40%{width:55%}75%{width:85%}100%{width:100%}}
+    @keyframes ldShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .ld-pct{
+      text-align:right;font-size:.65rem;color:rgba(255,255,255,.4);
+      margin-top:.35rem;letter-spacing:.06em;
+    }
+ 
+    /* Status message */
+    .ld-status{
+      position:relative;z-index:2;
+      font-size:.74rem;color:rgba(255,255,255,.38);
+      letter-spacing:.06em;margin-top:.2rem;
+      animation:ldFadeUp .8s .7s ease both;
+      min-height:1.1rem;
+    }
+ 
+    /* Corner decorations */
+    .ld-corner{
+      position:absolute;width:80px;height:80px;
+      border-color:rgba(201,168,76,.2);border-style:solid;
+    }
+    .ld-corner.tl{top:20px;left:20px;border-width:2px 0 0 2px;border-radius:4px 0 0 0}
+    .ld-corner.tr{top:20px;right:20px;border-width:2px 2px 0 0;border-radius:0 4px 0 0}
+    .ld-corner.bl{bottom:20px;left:20px;border-width:0 0 2px 2px;border-radius:0 0 0 4px}
+    .ld-corner.br{bottom:20px;right:20px;border-width:0 2px 2px 0;border-radius:0 0 4px 0}
+ 
+    /* ══ DOC MODAL ══ */
+    #doc-modal{display:none;position:fixed;inset:0;z-index:8000;background:rgba(28,20,14,.92);backdrop-filter:blur(8px);align-items:center;justify-content:center;flex-direction:column;padding:1.2rem}
+    #doc-modal.open{display:flex}
+    .dm-header{width:100%;max-width:1000px;display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem}
+    .dm-title{color:#fff;font-weight:700;font-size:1rem;display:flex;align-items:center;gap:.5rem}
+    .dm-tabs{display:flex;gap:.4rem;flex-wrap:wrap}
+    .dm-tab{padding:.38rem .85rem;border-radius:20px;border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:rgba(255,255,255,.75);font-size:.76rem;font-weight:500;cursor:pointer;font-family:'Inter',sans-serif;transition:all .18s}
+    .dm-tab:hover{border-color:var(--gold);color:var(--gold)}
+    .dm-tab.active{background:var(--gold);border-color:var(--gold);color:var(--dark)}
+    .dm-tab.missing{opacity:.35;cursor:not-allowed}
+    .dm-close{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:8px;padding:.42rem .9rem;font-size:.8rem;font-family:'Inter',sans-serif;cursor:pointer;transition:background .15s}
+    .dm-close:hover{background:rgba(255,255,255,.2)}
+    .dm-frame{width:100%;max-width:1000px;flex:1;background:#fff;border-radius:10px;overflow:hidden;position:relative;min-height:0;display:flex;align-items:center;justify-content:center}
+    .dm-frame img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+    .dm-placeholder{display:flex;flex-direction:column;align-items:center;gap:.6rem;color:var(--text3);padding:3rem}
+    .dm-placeholder span{font-size:2.5rem}
+ 
+    /* ══ PIN MODAL ══ */
+    #pin-overlay{display:none;position:fixed;inset:0;z-index:7000;background:rgba(28,20,14,.8);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:1.5rem}
+    #pin-overlay.open{display:flex}
+    .pin-modal{background:var(--white);border-radius:16px;border-top:4px solid var(--red2);padding:2.4rem 2.6rem;width:100%;max-width:380px;text-align:center;box-shadow:var(--sh-lg);animation:popIn .28s cubic-bezier(.34,1.5,.64,1)}
+    @keyframes popIn{from{opacity:0;transform:scale(.88) translateY(14px)}to{opacity:1;transform:none}}
+    .pm-icon{font-size:2.3rem;margin-bottom:.7rem}
+    .pm-title{font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--red);margin-bottom:.3rem;font-weight:700}
+    .pm-sub{color:var(--text2);font-size:.83rem;margin-bottom:1.4rem}
+    .pin-dots{display:flex;justify-content:center;gap:.65rem;margin-bottom:1.1rem}
+    .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border2);transition:all .15s}
+    .pin-dot.filled{background:var(--red2);border-color:var(--red2)}
+    .pin-err{color:#dc2626;font-size:.79rem;min-height:1.1rem;margin-bottom:.5rem;font-weight:500}
+    .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin-bottom:.7rem}
+    .key{background:var(--cream);border:1.5px solid var(--border);border-radius:9px;padding:.88rem;font-size:1.1rem;font-family:'Inter',sans-serif;font-weight:600;color:var(--red);cursor:pointer;transition:all .14s}
+    .key:hover{background:var(--border);border-color:var(--red)}
+    .key:active{transform:scale(.91)}
+    .key.del{color:#dc2626}
+    .key.zero{grid-column:2}
+    .pin-hint{color:var(--text3);font-size:.71rem;margin-top:.35rem}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+    .shake{animation:shake .4s ease}
+ 
+    /* ══ UTIL BAR ══ */
+    .util-bar{background:var(--red-dark);padding:.4rem 2.4rem;display:flex;align-items:center;justify-content:space-between;font-size:.72rem;color:rgba(255,255,255,.5)}
+    .util-bar a{color:rgba(255,255,255,.7);text-decoration:none}
+    .util-bar a:hover{color:var(--gold)}
+    .conn-wrap{display:flex;align-items:center;gap:.45rem}
+    .conn-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .4s}
+    .conn-dot.live{background:#4ade80;box-shadow:0 0 5px #4ade80}
+ 
+    /* ══ HEADER ══ */
+    header{background:var(--white);border-bottom:3px solid var(--red2);box-shadow:var(--sh-sm);position:sticky;top:0;z-index:200}
+    .hdr-inner{display:flex;align-items:center;justify-content:space-between;padding:.9rem 2.4rem;flex-wrap:wrap;gap:.8rem}
+    .logo{display:flex;align-items:center;gap:.9rem;text-decoration:none}
+    .logo-crest{
+      width:50px;height:50px;border-radius:50%;
+      background:linear-gradient(135deg,var(--red),var(--red2));
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.5rem;flex-shrink:0;
+      box-shadow:0 3px 12px rgba(139,26,26,.3);
+      border:2px solid rgba(201,168,76,.3);
+    }
+    .logo-text-wrap{display:flex;flex-direction:column;gap:.05rem}
+    .logo-name{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:900;color:var(--red);line-height:1}
+    .logo-name em{color:var(--gold);font-style:normal}
+    .logo-sub{font-size:.58rem;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:.1rem}
+    .hdr-right{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+    .tabs{display:flex;border:1.5px solid var(--border2);border-radius:8px;overflow:hidden;background:var(--cream)}
+    .tab-btn{padding:.5rem 1.3rem;border:none;background:transparent;color:var(--text2);font-family:'Inter',sans-serif;font-size:.81rem;font-weight:500;cursor:pointer;transition:all .2s}
+    .tab-btn.active{background:var(--red);color:#fff;font-weight:600}
+    .tab-btn:hover:not(.active){background:var(--border);color:var(--red)}
+    .logout-btn{display:none;background:rgba(220,38,38,.08);border:1.5px solid rgba(220,38,38,.25);color:#dc2626;border-radius:7px;padding:.42rem .9rem;font-size:.77rem;font-family:'Inter',sans-serif;cursor:pointer;transition:background .2s}
+    .logout-btn:hover{background:rgba(220,38,38,.15)}
+    .hdr-accent{height:2px;background:linear-gradient(90deg,var(--red-dark) 0%,var(--red2) 60%,var(--gold) 100%)}
+ 
+    /* ══ HERO ══ */
+    .hero{
+      background:linear-gradient(135deg,var(--red-dark) 0%,var(--red) 60%,#a02020 100%);
+      padding:2.2rem 2.4rem;color:#fff;
+      display:flex;align-items:center;justify-content:space-between;
+      gap:1rem;flex-wrap:wrap;border-radius:var(--r) var(--r) 0 0;
+      position:relative;overflow:hidden;
+    }
+    .hero::before{
+      content:'';position:absolute;top:-40px;right:-40px;
+      width:200px;height:200px;border-radius:50%;
+      background:rgba(201,168,76,.08);
+    }
+    .hero::after{
+      content:'';position:absolute;bottom:-60px;left:30%;
+      width:160px;height:160px;border-radius:50%;
+      background:rgba(255,255,255,.04);
+    }
+    .hero h2{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;margin-bottom:.35rem;line-height:1.2;position:relative;z-index:1}
+    .hero h2 span{color:var(--gold2)}
+    .hero p{font-size:.82rem;color:rgba(255,255,255,.72);line-height:1.55;position:relative;z-index:1}
+    .hero-badge{
+      background:rgba(201,168,76,.15);
+      border:1px solid rgba(201,168,76,.35);
+      border-radius:12px;padding:.9rem 1.3rem;font-size:.74rem;
+      color:rgba(255,255,255,.88);
+      display:flex;flex-direction:column;gap:.28rem;flex-shrink:0;
+      position:relative;z-index:1;
+    }
+    .hero-badge strong{font-size:1.3rem;color:var(--gold2);font-family:'Playfair Display',serif}
+ 
+    /* ══ MAIN / VIEWS ══ */
+    main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2.5rem 1.5rem 5rem}
+    .view{display:none;width:100%;max-width:640px;animation:fadeUp .35s ease}
+    .view.active{display:block}
+    #view-admin{max-width:920px}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+ 
+    /* ══ CARD ══ */
+    .card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+    .card-hdr{
+      background:linear-gradient(135deg,var(--red-dark),var(--red));
+      padding:1.6rem 2rem;color:#fff;position:relative;overflow:hidden;
+    }
+    .card-hdr::after{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(201,168,76,.06)}
+    .card-hdr .ey{font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:.35rem}
+    .card-hdr h1{font-family:'Playfair Display',serif;font-size:1.55rem;font-weight:900;margin-bottom:.3rem;position:relative;z-index:1}
+    .card-hdr p{font-size:.81rem;color:rgba(255,255,255,.68);line-height:1.5;position:relative;z-index:1}
+    .card-body{padding:2rem}
+ 
+    /* ══ FORM ══ */
+    .field{margin-bottom:1.1rem}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    label{display:block;font-size:.7rem;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--red);margin-bottom:.38rem}
+    input,select{
+      width:100%;background:var(--white);border:1.5px solid var(--border2);
+      border-radius:8px;padding:.72rem 1rem;color:var(--text);
+      font-family:'Inter',sans-serif;font-size:.89rem;
+      transition:border-color .2s,box-shadow .2s;outline:none;appearance:none;
+    }
+    select{
+      cursor:pointer;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238B1A1A' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 1rem center;padding-right:2.5rem;
+    }
+    input:focus,select:focus{border-color:var(--red2);box-shadow:0 0 0 3px rgba(192,57,43,.1)}
+    input::placeholder{color:var(--text3)}
+    .req{color:var(--red2);margin-left:1px}
+    .sec-label{
+      display:flex;align-items:center;gap:.6rem;
+      font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+      color:var(--red);margin:1.6rem 0 1rem;
+    }
+    .sec-label::before,.sec-label::after{content:'';flex:1;height:1px;background:var(--border)}
+ 
+    /* ══ UPLOAD ZONES ══ */
+    .upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+    .uz{border:2px dashed var(--border2);border-radius:10px;padding:1.1rem .9rem;text-align:center;cursor:pointer;background:var(--cream);position:relative;transition:border-color .2s,background .2s,transform .15s}
+    .uz:hover{border-color:var(--red2);background:#fff0ee;transform:translateY(-1px)}
+    .uz.ok{border-color:var(--green);border-style:solid;background:rgba(22,163,74,.04)}
+    .uz.going{border-color:var(--gold);border-style:solid;background:rgba(201,168,76,.06)}
+    .uz.bad{border-color:#dc2626;border-style:solid;background:rgba(220,38,38,.05)}
+    .uz input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;padding:0;border:none;background:none}
+    .uz-icon{font-size:1.65rem;margin-bottom:.35rem;display:block;pointer-events:none}
+    .uz-label{font-size:.76rem;font-weight:600;color:var(--red);display:block;margin-bottom:.14rem;pointer-events:none}
+    .uz-hint{font-size:.66rem;color:var(--text3);pointer-events:none}
+    .uz-ok{font-size:.67rem;color:var(--green);font-weight:600;margin-top:.3rem;display:none;align-items:center;gap:.25rem;justify-content:center;pointer-events:none}
+    .uz.ok .uz-ok{display:flex}
+    .uz-prog{height:3px;background:var(--border);border-radius:2px;margin-top:.5rem;overflow:hidden;display:none}
+    .uz.going .uz-prog{display:block}
+    .uz-bar{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold2));width:0%;transition:width .25s;border-radius:2px}
+ 
+    /* ══ WHATSAPP PAYMENT BOX ══ */
+    .wa-pay-box{
+      background:#f0fdf4;border:2px solid var(--wa);
+      border-radius:12px;padding:1.3rem 1.4rem;
+      margin-bottom:1.2rem;position:relative;overflow:hidden;
+    }
+    .wa-pay-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--wa),var(--wa-dk))}
+    .wa-pay-header{display:flex;align-items:center;gap:.75rem;margin-bottom:.9rem}
+    .wa-pay-icon{width:42px;height:42px;border-radius:10px;background:var(--wa);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;box-shadow:0 2px 8px rgba(37,211,102,.35)}
+    .wa-pay-title{font-weight:700;font-size:.95rem;color:var(--text);line-height:1.1}
+    .wa-pay-sub{font-size:.7rem;color:var(--text3);margin-top:.1rem}
+    .wa-pay-amount{display:inline-flex;align-items:center;gap:.4rem;background:var(--wa);color:#fff;border-radius:8px;padding:.4rem .9rem;font-weight:700;font-size:.85rem;margin-bottom:.9rem;box-shadow:0 2px 8px rgba(37,211,102,.3)}
+    .wa-pay-steps{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.9rem}
+    .wa-pay-step{display:flex;align-items:flex-start;gap:.6rem;background:#fff;border:1px solid rgba(37,211,102,.25);border-radius:8px;padding:.55rem .8rem}
+    .wa-step-num{width:20px;height:20px;border-radius:50%;background:var(--wa);color:#fff;font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+    .wa-step-text{font-size:.81rem;color:var(--text);line-height:1.45}
+    .wa-step-text strong{color:var(--wa-dk);font-weight:700}
+    .btn-wa-pay{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;width:100%;padding:.85rem 1.2rem;background:linear-gradient(135deg,var(--wa),var(--wa-dk));color:#fff;border:none;border-radius:9px;font-family:'Inter',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;text-decoration:none;transition:all .18s;box-shadow:0 4px 16px rgba(37,211,102,.35);margin-bottom:.8rem}
+    .btn-wa-pay:hover{filter:brightness(1.07);transform:translateY(-1px)}
+    .btn-wa-pay:active{transform:none;filter:brightness(.96)}
+    .wa-pay-note{font-size:.7rem;color:var(--text3);text-align:center;line-height:1.5;padding-top:.7rem;border-top:1px solid rgba(37,211,102,.2)}
+ 
+    /* ══ BUTTONS ══ */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:.42rem;padding:.72rem 1.5rem;border-radius:8px;border:none;font-family:'Inter',sans-serif;font-size:.87rem;font-weight:600;cursor:pointer;transition:all .18s;text-decoration:none;letter-spacing:.01em}
+    .btn:hover{transform:translateY(-1px);filter:brightness(1.06)}
+    .btn:active{transform:none;filter:brightness(.96)}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;filter:none}
+    .btn-primary{background:linear-gradient(135deg,var(--red),var(--red2));color:#fff;width:100%;margin-top:.9rem;font-size:.92rem;padding:.88rem;box-shadow:0 4px 16px rgba(139,26,26,.3)}
+    .btn-approve{background:var(--green-dim);color:var(--green);border:1.5px solid rgba(22,163,74,.25);padding:.35rem .8rem;font-size:.74rem}
+    .btn-reject{background:rgba(220,38,38,.1);color:#dc2626;border:1.5px solid rgba(220,38,38,.25);padding:.35rem .8rem;font-size:.74rem}
+    .btn-wa{background:rgba(37,211,102,.1);color:#16a34a;border:1.5px solid rgba(37,211,102,.25);padding:.35rem .8rem;font-size:.74rem}
+    .btn-export{background:var(--red);color:#fff;padding:.44rem 1rem;font-size:.78rem;box-shadow:0 2px 8px rgba(139,26,26,.25)}
+ 
+    /* ══ TOAST ══ */
+    #toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(14px);background:var(--white);border:1.5px solid var(--border2);border-left:4px solid var(--red);border-radius:8px;padding:.8rem 1.4rem;font-size:.83rem;font-weight:500;color:var(--text);box-shadow:var(--sh-lg);opacity:0;transition:opacity .3s,transform .3s;z-index:9990;pointer-events:none;white-space:nowrap}
+    #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    #toast.success{border-left-color:var(--green);color:var(--green)}
+    #toast.error{border-left-color:#dc2626;color:#dc2626}
+ 
+    /* ══ ADMIN STATS ══ */
+    .stats-bar{display:flex;gap:.7rem;margin-bottom:1.3rem;flex-wrap:wrap}
+    .stat{flex:1;min-width:72px;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.8rem;text-align:center;box-shadow:var(--sh-sm)}
+    .stat-num{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900}
+    .stat-lbl{font-size:.64rem;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+    .n-all{color:var(--red)}.n-p{color:var(--amber)}.n-a{color:var(--green)}.n-r{color:#dc2626}
+    .admin-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:.6rem;flex-wrap:wrap}
+    .filter-tabs{display:flex;gap:.32rem;flex-wrap:wrap}
+    .filter-btn{padding:.3rem .82rem;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:.74rem;font-family:'Inter',sans-serif;font-weight:500;cursor:pointer;transition:all .17s}
+    .filter-btn.active,.filter-btn:hover{border-color:var(--red2);color:var(--red2);background:#fff0ee}
+ 
+    /* ══ APP CARDS ══ */
+    #app-list{display:flex;flex-direction:column;gap:.8rem}
+    .app-card{background:var(--white);border:1px solid var(--border);border-left:4px solid var(--red);border-radius:10px;padding:1rem 1.2rem;box-shadow:var(--sh-sm);transition:box-shadow .2s,transform .18s}
+    .app-card:hover{box-shadow:var(--sh);transform:translateY(-1px)}
+    .app-card.s-approved{border-left-color:var(--green)}
+    .app-card.s-rejected{border-left-color:#dc2626}
+    .app-card.s-pending{border-left-color:var(--gold)}
+    .act-row{display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap}
+    .app-info{display:flex;flex-direction:column;gap:.17rem}
+    .app-name{font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--red)}
+    .app-meta{font-size:.75rem;color:var(--text2);display:flex;gap:.55rem;flex-wrap:wrap;margin-top:.1rem}
+    .app-course{font-size:.73rem;color:var(--gold);font-weight:600;margin-top:.07rem}
+    .sb{display:inline-block;padding:.18rem .65rem;border-radius:20px;font-size:.66rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+    .sb-p{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(217,119,6,.25)}
+    .sb-a{background:var(--green-dim);color:var(--green);border:1px solid rgba(22,163,74,.25)}
+    .sb-r{background:rgba(220,38,38,.1);color:#dc2626;border:1px solid rgba(220,38,38,.25)}
+    .app-actions{display:flex;gap:.38rem;flex-wrap:wrap;align-items:center}
+ 
+    /* ══ DOC THUMBNAILS ══ */
+    .doc-panel{margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--border)}
+    .doc-panel-title{font-size:.69rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:.65rem}
+    .doc-thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.7rem}
+    .doc-thumb{border:1.5px solid var(--border);border-radius:8px;overflow:hidden;background:var(--cream);position:relative;transition:border-color .18s,transform .18s,box-shadow .18s;cursor:pointer}
+    .doc-thumb:hover{border-color:var(--red2);transform:translateY(-2px);box-shadow:var(--sh)}
+    .dt-label{padding:.45rem .6rem;font-size:.69rem;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);background:var(--cream);display:flex;align-items:center;gap:.3rem}
+    .dt-preview{height:110px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--offwhite)}
+    .dt-preview img{width:100%;height:100%;object-fit:cover;display:block}
+    .dt-preview.pdf-prev{flex-direction:column;gap:.4rem;color:var(--text3);font-size:.75rem}
+    .dt-preview .pdf-icon{font-size:2.2rem}
+    .dt-preview.missing-prev{flex-direction:column;gap:.3rem;opacity:.45;font-size:.72rem;color:var(--text3)}
+    .dt-preview .miss-icon{font-size:1.8rem}
+    .dt-open{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(139,26,26,0);transition:background .2s;border-radius:8px}
+    .doc-thumb:hover .dt-open{background:rgba(139,26,26,.08)}
+    .dt-open-btn{opacity:0;background:var(--red);color:#fff;border:none;border-radius:6px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:opacity .2s}
+    .doc-thumb:hover .dt-open-btn{opacity:1}
+ 
+    /* ══ MISC ══ */
+    .divider{border:none;border-top:1px solid var(--border);margin:1.2rem 0}
+    .empty{text-align:center;padding:3rem 1rem;color:var(--text3)}
+    .empty .icon{font-size:2.4rem;margin-bottom:.8rem;display:block}
+    .spinner{width:17px;height:17px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    footer{background:var(--red-dark);color:rgba(255,255,255,.45);text-align:center;padding:1.2rem;font-size:.71rem;line-height:1.7}
+    footer strong{color:rgba(255,255,255,.8)}
+    footer a{color:var(--gold);text-decoration:none}
+    footer a:hover{color:var(--gold2)}
+    @media(max-width:560px){
+      .upload-grid,.field-row{grid-template-columns:1fr}
+      .card-body{padding:1.4rem 1.1rem}
+      .hero{padding:1.5rem 1.2rem}
+      .hero-badge{display:none}
+      .doc-thumbs{grid-template-columns:1fr 1fr}
+      .hdr-inner{padding:.8rem 1rem}
+      .ld-name{font-size:1.5rem}
+    }
+  </style>
+</head>
+<body>
+ 
+<!-- ══ EPIC LOADER ══ -->
+<div id="loader">
+  <!-- Animated bg -->
+  <div class="ld-bg">
+    <div class="ld-dot"></div>
+    <div class="ld-dot"></div>
+    <div class="ld-dot"></div>
+    <div class="ld-dot"></div>
+    <div class="ld-dot"></div>
+  </div>
+  <div class="ld-grid"></div>
+  <!-- Corner decorations -->
+  <div class="ld-corner tl"></div>
+  <div class="ld-corner tr"></div>
+  <div class="ld-corner bl"></div>
+  <div class="ld-corner br"></div>
+  <!-- Crest emblem -->
+  <div class="ld-crest" style="position:relative">
+    🎓
+    <div class="ld-spin-ring"></div>
+    <div class="ld-spin-ring2"></div>
+  </div>
+  <!-- Text -->
+  <div class="ld-text">
+    <div class="ld-name"><span>LIT</span> Connect</div>
+    <div class="ld-full">MVM Institute of Engineering &amp; Technology</div>
+    <div class="ld-tagline">Shaping Engineers, Building Futures</div>
+  </div>
+  <!-- Progress -->
+  <div class="ld-progress">
+    <div class="ld-track"><div class="ld-bar"></div></div>
+    <div class="ld-pct" id="ld-pct">Loading…</div>
+  </div>
+  <div class="ld-status" id="ld-msg">Connecting to Firebase…</div>
+</div>
+ 
+<!-- ══ DOC VIEWER MODAL ══ -->
+<div id="doc-modal">
+  <div class="dm-header">
+    <div class="dm-title">📄 <span id="dm-applicant-name">Documents</span></div>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <div class="dm-tabs" id="dm-tabs"></div>
+      <button class="dm-close" onclick="closeDocModal()">✕ Close</button>
+    </div>
+  </div>
+  <div class="dm-frame" id="dm-frame">
+    <div class="dm-placeholder"><span>📂</span><span style="font-size:.9rem">Select a document above</span></div>
+  </div>
+</div>
+ 
+<!-- ══ PIN MODAL ══ -->
+<div id="pin-overlay">
+  <div class="pin-modal" id="pin-modal">
+    <div class="pm-icon">🔐</div>
+    <div class="pm-title">Admin Access</div>
+    <div class="pm-sub">Enter your 4-digit PIN to continue</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-err" id="pin-err"></div>
+    <div class="keypad">
+      <button class="key" onclick="pinKey('1')">1</button>
+      <button class="key" onclick="pinKey('2')">2</button>
+      <button class="key" onclick="pinKey('3')">3</button>
+      <button class="key" onclick="pinKey('4')">4</button>
+      <button class="key" onclick="pinKey('5')">5</button>
+      <button class="key" onclick="pinKey('6')">6</button>
+      <button class="key" onclick="pinKey('7')">7</button>
+      <button class="key" onclick="pinKey('8')">8</button>
+      <button class="key" onclick="pinKey('9')">9</button>
+      <button class="key del" onclick="pinDel()">⌫</button>
+      <button class="key zero" onclick="pinKey('0')">0</button>
+    </div>
+    <div class="pin-hint">PIN: <strong>1234</strong></div>
+  </div>
+</div>
+ 
+<!-- ══ UTIL BAR ══ -->
+<div class="util-bar">
+  <span>📍 MVM Institute of Engineering &amp; Technology · Gajraula, Amroha, UP – 244235</span>
+  <div class="conn-wrap">
+    <div class="conn-dot" id="conn-dot"></div>
+    <span id="conn-label">Connecting…</span>
+  </div>
+</div>
+ 
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="hdr-inner">
+    <div class="logo">
+      <div class="logo-crest">🎓</div>
+      <div class="logo-text-wrap">
+        <div class="logo-name"><em>LIT</em> Connect</div>
+        <div class="logo-sub">MVM Institute · Admissions Portal</div>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <div class="tabs">
+        <button class="tab-btn active" id="tab-student" onclick="switchView('student')">🎒 Student</button>
+        <button class="tab-btn" id="tab-admin" onclick="requestAdmin()">🛡 Admin</button>
+      </div>
+      <button class="logout-btn" id="logout-btn" onclick="adminLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="hdr-accent"></div>
+</header>
+ 
+<!-- ══ MAIN ══ -->
+<main>
+ 
+  <!-- ── STUDENT VIEW ── -->
+  <div id="view-student" class="view active">
+    <div class="hero">
+      <div>
+        <h2>Apply to<br/><span>MVM Institute</span></h2>
+        <p>Fill in your details &amp; upload your documents.<br/>Securely stored on Firebase — reviewed within 3 working days.</p>
+      </div>
+      <div class="hero-badge">
+        <strong>2026-27</strong>
+        Admissions Open
+        <span style="font-size:.68rem;color:rgba(255,255,255,.45)">Engineering &amp; Tech Programmes</span>
+      </div>
+    </div>
+ 
+    <div class="card" style="border-radius:0 0 14px 14px;border-top:none">
+      <div class="card-body">
+ 
+        <div class="sec-label">Personal Information</div>
+        <div class="field-row">
+          <div class="field">
+            <label for="s-name">Full Name <span class="req">*</span></label>
+            <input type="text" id="s-name" placeholder="e.g. Bernard Chileshe"/>
+          </div>
+          <div class="field">
+            <label for="s-country">Country <span class="req">*</span></label>
+            <input type="text" id="s-country" placeholder="e.g. Zambia"/>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="s-phone">Phone / WhatsApp <span class="req">*</span></label>
+            <input type="tel" id="s-phone" placeholder="+260 98765 43210"/>
+          </div>
+          <div class="field">
+            <label for="s-email">Email Address</label>
+            <input type="email" id="s-email" placeholder="name@email.com"/>
+          </div>
+        </div>
+        <div class="field">
+          <label for="s-course">Programme Applying For <span class="req">*</span></label>
+          <select id="s-course">
+            <option value="" disabled selected>Select a programme…</option>
+            <option>B.Tech Computer Science & Engineering</option>
+            <option>B.Tech Electronics & Communication Engg.</option>
+            <option>B.Tech Mechanical Engineering</option>
+            <option>B.Tech Civil Engineering</option>
+            <option>B.Tech Electrical Engineering</option>
+            <option>B.Tech Information Technology</option>
+            <option>MBA (Master of Business Administration)</option>
+            <option>MCA (Master of Computer Applications)</option>
+            <option>M.Tech Computer Science</option>
+            <option>Lateral Entry (B.Tech)</option>
+            <option>Other</option>
+          </select>
+        </div>
+ 
+        <div class="sec-label">📎 Upload Documents</div>
+        <div class="upload-grid">
+          <div class="uz" id="uz-nrc">
+            <input type="file" id="f-nrc" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="stageFile('nrc',this)"/>
+            <span class="uz-icon">🪪</span>
+            <span class="uz-label">NRC / Aadhar / ID <span class="req">*</span></span>
+            <span class="uz-hint">PDF or image · max 5 MB</span>
+            <div class="uz-ok">✔ Ready to upload</div>
+            <div class="uz-prog"><div class="uz-bar" id="bar-nrc"></div></div>
+          </div>
+          <div class="uz" id="uz-transcript">
+            <input type="file" id="f-transcript" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="stageFile('transcript',this)"/>
+            <span class="uz-icon">🎓</span>
+            <span class="uz-label">Mark Sheet / Transcript</span>
+            <span class="uz-hint">PDF or image · max 5 MB</span>
+            <div class="uz-ok">✔ Ready to upload</div>
+            <div class="uz-prog"><div class="uz-bar" id="bar-transcript"></div></div>
+          </div>
+          <div class="uz" id="uz-photo">
+            <input type="file" id="f-photo" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="stageFile('photo',this)"/>
+            <span class="uz-icon">📷</span>
+            <span class="uz-label">Passport Photo</span>
+            <span class="uz-hint">PDF or image · max 5 MB</span>
+            <div class="uz-ok">✔ Ready to upload</div>
+            <div class="uz-prog"><div class="uz-bar" id="bar-photo"></div></div>
+          </div>
+          <div class="uz" id="uz-other">
+            <input type="file" id="f-other" accept=".pdf,.jpg,.jpeg,.png,.webp" onchange="stageFile('other',this)"/>
+            <span class="uz-icon">📄</span>
+            <span class="uz-label">Other Document</span>
+            <span class="uz-hint">PDF or image · max 5 MB</span>
+            <div class="uz-ok">✔ Ready to upload</div>
+            <div class="uz-prog"><div class="uz-bar" id="bar-other"></div></div>
+          </div>
+        </div>
+ 
+        <!-- ══ WHATSAPP PAYMENT ══ -->
+        <div class="sec-label">💰 Application Fee Payment</div>
+        <div class="wa-pay-box">
+          <div class="wa-pay-header">
+            <div class="wa-pay-icon">💬</div>
+            <div>
+              <div class="wa-pay-title">Pay via WhatsApp</div>
+              <div class="wa-pay-sub">Send your application fee to our admissions team</div>
+            </div>
+          </div>
+          <div class="wa-pay-amount">💰 Application Fee: K75</div>
+          <div class="wa-pay-steps">
+            <div class="wa-pay-step">
+              <div class="wa-step-num">1</div>
+              <div class="wa-step-text">Tap the button below — it opens WhatsApp with a pre-filled message to our admissions number</div>
+            </div>
+            <div class="wa-pay-step">
+              <div class="wa-step-num">2</div>
+              <div class="wa-step-text">Send the message and our team will reply with <strong> airtel zmw / bank payment details</strong></div>
+            </div>
+            <div class="wa-pay-step">
+              <div class="wa-step-num">3</div>
+              <div class="wa-step-text">Complete payment, then submit your application below — fee is verified within 24 hrs</div>
+            </div>
+          </div>
+          <a id="wa-pay-btn" href="#" target="_blank" rel="noopener" class="btn-wa-pay">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+            Chat with MVM Admissions on WhatsApp
+          </a>
+          <div class="wa-pay-note">📌 Complete payment on WhatsApp before submitting this form. Our team is available Mon–Sat, 9 AM – 5 PM.</div>
+        </div>
+ 
+        <button class="btn btn-primary" id="submit-btn" onclick="submitApplication()">
+          🎓 Submit Application to MVM Institute
+        </button>
+ 
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ── ADMIN VIEW ── -->
+  <div id="view-admin" class="view">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="ey">Admin Dashboard</div>
+        <h1>Applications</h1>
+        <p>Documents shown inline — click any thumbnail to view full screen.</p>
+      </div>
+      <div class="card-body">
+        <div class="stats-bar">
+          <div class="stat"><div class="stat-num n-all" id="st-total">—</div><div class="stat-lbl">Total</div></div>
+          <div class="stat"><div class="stat-num n-p" id="st-pend">—</div><div class="stat-lbl">Pending</div></div>
+          <div class="stat"><div class="stat-num n-a" id="st-appr">—</div><div class="stat-lbl">Approved</div></div>
+          <div class="stat"><div class="stat-num n-r" id="st-rej">—</div><div class="stat-lbl">Rejected</div></div>
+        </div>
+        <hr class="divider"/>
+        <div class="admin-toolbar">
+          <div class="filter-tabs">
+            <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+            <button class="filter-btn" onclick="setFilter('pending',this)">Pending</button>
+            <button class="filter-btn" onclick="setFilter('approved',this)">Approved</button>
+            <button class="filter-btn" onclick="setFilter('rejected',this)">Rejected</button>
+          </div>
+          <button class="btn btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+        <div id="app-list"><div class="empty"><span class="icon">⏳</span>Loading…</div></div>
+      </div>
+    </div>
+  </div>
+ 
+</main>
+ 
+<footer>
+  <strong>LITCONNECT</strong> · MVM Institute of Engineering &amp; Technology ·
+  Powered by <a href="https://firebase.google.com" target="_blank">LitCoin</a><br/>
+  © 2026 MVM Institute · Gajraula, Amroha, Uttar Pradesh · <a href="https://mvminstitute.edu.in" target="_blank">mvminstitute.edu.in</a>
+</footer>
+ 
+<div id="toast"></div>
+ 
+<script>
+'use strict';
+ 
+/* ══ FIREBASE CONFIG — replace with your MVM project ══ */
+const FB_CFG = {
+  apiKey:            "AIzaSyAx-KQNi2B6rXfqDHIKbP2Uoe5v5n0ZMjw",
+  authDomain:        "litconnect-af206.firebaseapp.com",
+  projectId:         "litconnect-af206",
+  storageBucket:     "litconnect-af206.firebasestorage.app",
+  messagingSenderId: "903152406203",
+  appId:             "1:903152406203:web:075e5bb348f86b3f90e39e"
+};
+ 
+/* ── MVM Admissions WhatsApp (country code + number, no +) ── */
+const ADMISSIONS_WA = "917500000000"; /* ← Replace with real MVM admissions WhatsApp */
+ 
+const ADMIN_PIN = '1234';
+const DOC_KEYS  = ['nrc','transcript','photo','other'];
+const DOC_NAMES = { nrc:'ID / Aadhar', transcript:'Mark Sheet', photo:'Passport Photo', other:'Other Doc' };
+const DOC_ICONS = { nrc:'🪪', transcript:'🎓', photo:'📷', other:'📄' };
+ 
+/* ── State ── */
+let db, storage, auth;
+let authDone = false, adminUnlocked = false;
+let pinBuf = '', filter = 'all';
+let allApps = [], staged = {};
+ 
+/* ════════════════════════════════════════
+   LOADER — animated percentage counter
+════════════════════════════════════════ */
+const ldMsgs  = ['Connecting to Firebase…','Authenticating session…','Loading admin vault…','Almost there…'];
+const ldMsgEl = document.getElementById('ld-msg');
+const ldPctEl = document.getElementById('ld-pct');
+let ldIdx = 0, ldPct = 0;
+ 
+const ldMsgTimer = setInterval(() => {
+  ldIdx = (ldIdx + 1) % ldMsgs.length;
+  ldMsgEl.textContent = ldMsgs[ldIdx];
+}, 900);
+ 
+const ldPctTimer = setInterval(() => {
+  if (ldPct < 90) { ldPct += Math.random() * 8; ldPctEl.textContent = Math.min(90, Math.round(ldPct)) + '%'; }
+}, 220);
+ 
+function hideLoader(msg) {
+  clearInterval(ldMsgTimer);
+  clearInterval(ldPctTimer);
+  ldPct = 100; ldPctEl.textContent = '100%';
+  ldMsgEl.textContent = msg || 'Ready!';
+  setTimeout(() => document.getElementById('loader').classList.add('gone'), 700);
+}
+ 
+/* ════════════════════════════════════════
+   FIREBASE INIT
+════════════════════════════════════════ */
+try {
+  firebase.initializeApp(FB_CFG);
+  db      = firebase.firestore();
+  storage = firebase.storage();
+  auth    = firebase.auth();
+ 
+  auth.signInAnonymously()
+    .then(cred => {
+      authDone = true;
+      console.log('[Auth] uid:', cred.user.uid);
+      setConn(true);
+      hideLoader('✓ Welcome to MVM Connect!');
+    })
+    .catch(err => {
+      console.error('[Auth]', err.code, err.message);
+      setConn(false);
+      hideLoader('Connection failed — check internet');
+    });
+} catch(e) {
+  console.error('[Firebase]', e.message);
+  setConn(false);
+  hideLoader('Firebase error');
+}
+ 
+function setConn(live) {
+  document.getElementById('conn-dot').classList.toggle('live', live);
+  document.getElementById('conn-label').textContent = live ? '● Live · Firebase' : '○ Offline';
+}
+ 
+function waitAuth() {
+  return new Promise((resolve, reject) => {
+    if (authDone) { resolve(); return; }
+    let ms = 0;
+    const iv = setInterval(() => {
+      ms += 100;
+      if (authDone)        { clearInterval(iv); resolve(); }
+      else if (ms >= 9000) { clearInterval(iv); reject(new Error('Firebase auth timed out. Check your internet connection.')); }
+    }, 100);
+  });
+}
+ 
+/* ════════════════════════════════════════
+   WHATSAPP PAYMENT LINK — live update
+════════════════════════════════════════ */
+function updateWaPayLink() {
+  const name    = document.getElementById('s-name').value.trim()    || 'Applicant';
+  const country = document.getElementById('s-country').value.trim() || 'India';
+  const phone   = document.getElementById('s-phone').value.trim()   || '';
+  const course  = document.getElementById('s-course').value         || 'the applied programme';
+  const msg = encodeURIComponent(
+    `Hello MVM Institute! My name is ${name} from ${country}. ` +
+    `I would like to pay the ₹500 application fee for *${course}*. ` +
+    `My contact: ${phone}. Please share payment details. Thank you! 🎓`
+  );
+  document.getElementById('wa-pay-btn').href = `https://wa.me/${ADMISSIONS_WA}?text=${msg}`;
+}
+['s-name','s-country','s-phone'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateWaPayLink);
+});
+document.getElementById('s-course').addEventListener('change', updateWaPayLink);
+updateWaPayLink();
+ 
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+let toastT;
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show ' + type;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.className = '', 5000);
+}
+ 
+/* ════════════════════════════════════════
+   PIN MODAL
+════════════════════════════════════════ */
+const pinOverlay = document.getElementById('pin-overlay');
+function openPin()  { pinBuf=''; updDots(); document.getElementById('pin-err').textContent=''; pinOverlay.classList.add('open'); }
+function closePin() { pinOverlay.classList.remove('open'); }
+function updDots()  { for(let i=0;i<4;i++) document.getElementById('d'+i).classList.toggle('filled', i<pinBuf.length); }
+function pinKey(d)  { if(pinBuf.length>=4) return; pinBuf+=d; updDots(); if(pinBuf.length===4) checkPin(); }
+function pinDel()   { pinBuf=pinBuf.slice(0,-1); updDots(); document.getElementById('pin-err').textContent=''; }
+function checkPin() {
+  if (pinBuf === ADMIN_PIN) {
+    adminUnlocked = true; closePin();
+    document.getElementById('logout-btn').style.display = 'inline-flex';
+    activateView('admin'); setTabActive('admin');
+  } else {
+    document.getElementById('pin-err').textContent = '✕ Incorrect PIN. Try again.';
+    document.getElementById('pin-modal').classList.add('shake');
+    setTimeout(() => document.getElementById('pin-modal').classList.remove('shake'), 450);
+    pinBuf=''; updDots();
+  }
+}
+pinOverlay.addEventListener('click', e => { if(e.target!==pinOverlay) return; closePin(); setTabActive('student'); });
+ 
+/* ════════════════════════════════════════
+   VIEW SWITCHING
+════════════════════════════════════════ */
+function setTabActive(w) { document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById('tab-'+w).classList.add('active'); }
+function requestAdmin()  { setTabActive('admin'); if(adminUnlocked) activateView('admin'); else openPin(); }
+function switchView(v)   { setTabActive(v); activateView(v); }
+function activateView(v) {
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  if (v==='admin') loadApps();
+}
+function adminLogout() {
+  adminUnlocked=false;
+  document.getElementById('logout-btn').style.display='none';
+  switchView('student'); setTabActive('student');
+}
+ 
+/* ════════════════════════════════════════
+   FILE STAGING
+════════════════════════════════════════ */
+function stageFile(key, input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5*1024*1024) { toast('File too large — max 5 MB','error'); input.value=''; return; }
+  const ok = file.type.startsWith('image/') || file.type==='application/pdf';
+  if (!ok) { toast('Only images or PDF files allowed','error'); input.value=''; return; }
+  staged[key] = file;
+  document.getElementById('uz-'+key).classList.remove('bad','going');
+  document.getElementById('uz-'+key).classList.add('ok');
+}
+ 
+/* ════════════════════════════════════════
+   UPLOAD FILE → Firebase Storage
+════════════════════════════════════════ */
+function uploadFile(appId, key, file) {
+  return new Promise((resolve, reject) => {
+    const ext  = (file.name.split('.').pop() || 'bin').toLowerCase();
+    const path = `applications/${appId}/${key}_${Date.now()}.${ext}`;
+    console.log(`[Upload] START key=${key} path=${path} size=${file.size} type=${file.type}`);
+ 
+    const ref = storage.ref(path);
+    const uz  = document.getElementById('uz-'+key);
+    const bar = document.getElementById('bar-'+key);
+    uz.classList.remove('ok','bad'); uz.classList.add('going');
+    bar.style.width = '0%';
+ 
+    let ct = file.type;
+    if (!ct) {
+      const m={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif',pdf:'application/pdf'};
+      ct = m[ext] || 'application/octet-stream';
+    }
+ 
+    const task = ref.put(file, { contentType:ct, customMetadata:{appId,docType:key,fileName:file.name} });
+ 
+    task.on('state_changed',
+      snap => {
+        const pct = Math.round(snap.bytesTransferred / snap.totalBytes * 100);
+        bar.style.width = pct + '%';
+        console.log(`[Upload] ${key} ${pct}%`);
+      },
+      err => {
+        console.error(`[Upload] ERROR key=${key} code=${err.code} msg=${err.message}`);
+        uz.classList.remove('going'); uz.classList.add('bad');
+        let reason = err.message;
+        if (err.code==='storage/unauthorized') reason='Permission denied — deploy storage.rules (allow write: if request.auth != null)';
+        reject(new Error(DOC_NAMES[key]+': '+reason));
+      },
+      async () => {
+        try {
+          await new Promise(r=>setTimeout(r,400));
+          const url = await ref.getDownloadURL();
+          console.log(`[Upload] DONE key=${key} url=${url.slice(0,60)}…`);
+          uz.classList.remove('going'); uz.classList.add('ok');
+          resolve({ url, name:file.name, type:ct, path });
+        } catch(e) { reject(new Error('URL fetch failed: '+e.message)); }
+      }
+    );
+  });
+}
+ 
+/* ════════════════════════════════════════
+   SUBMIT APPLICATION
+════════════════════════════════════════ */
+async function submitApplication() {
+  const name    = document.getElementById('s-name').value.trim();
+  const country = document.getElementById('s-country').value.trim();
+  const phone   = document.getElementById('s-phone').value.trim();
+  const email   = document.getElementById('s-email').value.trim();
+  const course  = document.getElementById('s-course').value;
+ 
+  if (!name||!country||!phone||!course) { toast('Please fill in all required fields ✱','error'); return; }
+  if (!staged.nrc) { document.getElementById('uz-nrc').classList.add('bad'); toast('Please upload your ID / Aadhar document','error'); return; }
+ 
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Connecting…';
+ 
+  try {
+    await waitAuth();
+ 
+    btn.innerHTML = '<span class="spinner"></span> Creating record…';
+    const docRef = await db.collection('applications').add({ status:'pending', createdAt:new Date().toISOString() });
+    const appId  = docRef.id;
+ 
+    const docs = {};
+    for (const key of DOC_KEYS) {
+      if (!staged[key]) continue;
+      btn.innerHTML = `<span class="spinner"></span> Uploading ${DOC_NAMES[key]}…`;
+      docs[key] = await uploadFile(appId, key, staged[key]);
+    }
+ 
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+    await db.collection('applications').doc(appId).set({
+      id:appId, name, country, phone, email, course,
+      status:'pending', createdAt:new Date().toISOString(),
+      docs,
+      payment:{ method:'WhatsApp', status:'pending_verification' }
+    });
+ 
+    /* reset */
+    ['s-name','s-country','s-phone','s-email'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('s-course').selectedIndex=0;
+    staged={};
+    DOC_KEYS.forEach(k=>{
+      document.getElementById('uz-'+k).classList.remove('ok','going','bad');
+      document.getElementById('f-'+k).value='';
+      document.getElementById('bar-'+k).style.width='0%';
+    });
+    updateWaPayLink();
+    toast('✅ Application submitted! We will contact you shortly.','success');
+ 
+  } catch(err) {
+    console.error('[Submit]',err);
+    toast('❌ '+err.message,'error');
+  } finally {
+    btn.disabled=false;
+    btn.innerHTML='🎓 Submit Application to MVM Institute';
+  }
+}
+ 
+/* ════════════════════════════════════════
+   LOAD APPLICATIONS (admin)
+════════════════════════════════════════ */
+async function loadApps() {
+  document.getElementById('app-list').innerHTML='<div class="empty"><span class="icon">⏳</span>Loading…</div>';
+  try {
+    await waitAuth();
+    const snap = await db.collection('applications').orderBy('createdAt','desc').get();
+    allApps = snap.docs.map(d=>({...d.data(),id:d.id}));
+    renderAdmin();
+  } catch(err) {
+    console.error('[loadApps]',err);
+    document.getElementById('app-list').innerHTML=`<div class="empty"><span class="icon">⚠️</span>${esc(err.message)}</div>`;
+  }
+}
+ 
+/* ════════════════════════════════════════
+   UPDATE STATUS
+════════════════════════════════════════ */
+async function updateStatus(id, status) {
+  try {
+    await db.collection('applications').doc(id).update({ status });
+    allApps = allApps.map(a=>a.id===id?{...a,status}:a);
+    renderAdmin();
+    toast(status==='approved'?'✅ Application Approved':'❌ Application Rejected');
+  } catch(e) { toast('Update failed: '+e.message,'error'); }
+}
+ 
+/* ════════════════════════════════════════
+   FILTER
+════════════════════════════════════════ */
+function setFilter(f,btn) {
+  filter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAdmin();
+}
+ 
+/* ════════════════════════════════════════
+   RENDER ADMIN
+════════════════════════════════════════ */
+function renderAdmin() {
+  const apps = filter==='all' ? allApps : allApps.filter(a=>a.status===filter);
+  document.getElementById('st-total').textContent = allApps.length;
+  document.getElementById('st-pend').textContent  = allApps.filter(a=>a.status==='pending').length;
+  document.getElementById('st-appr').textContent  = allApps.filter(a=>a.status==='approved').length;
+  document.getElementById('st-rej').textContent   = allApps.filter(a=>a.status==='rejected').length;
+ 
+  const list = document.getElementById('app-list');
+  if (!apps.length) { list.innerHTML=`<div class="empty"><span class="icon">📭</span>${filter==='all'?'No applications yet.':'No '+filter+' applications.'}</div>`; return; }
+ 
+  list.innerHTML = apps.map(a => {
+    const sbClass = a.status==='approved'?'sb-a':a.status==='rejected'?'sb-r':'sb-p';
+    const waNum   = (a.phone||'').replace(/\D/g,'');
+    const waMsg   = encodeURIComponent(`Hello ${a.name}! MVM Institute Admissions here. We received your application for *${a.course||'the applied programme'}* and would like to connect. Please reply to continue. 🎓`);
+    const waHref  = `https://wa.me/${waNum}?text=${waMsg}`;
+ 
+    const thumbs = DOC_KEYS.map(k => {
+      const d=a.docs&&a.docs[k], hasUrl=d&&d.url;
+      const isImg=hasUrl&&d.type&&d.type.startsWith('image/');
+      const isPdf=hasUrl&&d.type==='application/pdf';
+      let preview;
+      if(isImg)      preview=`<div class="dt-preview"><img src="${esc(d.url)}" alt="${DOC_NAMES[k]}" loading="lazy"/></div>`;
+      else if(isPdf) preview=`<div class="dt-preview pdf-prev"><div class="pdf-icon">📄</div><span>${esc(d.name||'PDF')}</span></div>`;
+      else if(hasUrl)preview=`<div class="dt-preview pdf-prev"><div class="pdf-icon">📎</div><span>${esc(d.name||'File')}</span></div>`;
+      else           preview=`<div class="dt-preview missing-prev"><div class="miss-icon">—</div><span>Not uploaded</span></div>`;
+      const click  = hasUrl?`onclick="openDocModal('${esc(a.id)}','${k}')"`:'';
+      const openBtn= hasUrl?`<div class="dt-open"><button class="dt-open-btn">🔍 View</button></div>`:'';
+      return `<div class="doc-thumb" ${click}><div class="dt-label">${DOC_ICONS[k]} ${DOC_NAMES[k]}</div>${preview}${openBtn}</div>`;
+    }).join('');
+ 
+    return `
+    <div class="app-card s-${a.status}" id="card-${a.id}">
+      <div class="act-row">
+        <div class="app-info">
+          <span class="app-name">${esc(a.name)}</span>
+          <div class="app-meta">
+            <span>🌍 ${esc(a.country)}</span>
+            <span>📞 ${esc(a.phone)}</span>
+            ${a.email?`<span>✉️ ${esc(a.email)}</span>`:''}
+          </div>
+          <div class="app-course">📚 ${esc(a.course||'N/A')}</div>
+          <div style="font-size:.7rem;color:var(--text3);margin-top:.2rem">📅 ${(a.createdAt||'').slice(0,10)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem">
+          <span class="sb ${sbClass}">${a.status}</span>
+          <div class="app-actions">
+            ${a.status!=='approved'?`<button class="btn btn-approve" onclick="updateStatus('${a.id}','approved')">✓ Approve</button>`:''}
+            ${a.status!=='rejected'?`<button class="btn btn-reject"  onclick="updateStatus('${a.id}','rejected')">✕ Reject</button>`:''}
+            <a class="btn btn-wa" href="${waHref}" target="_blank" rel="noopener">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+              WhatsApp
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="doc-panel">
+        <div class="doc-panel-title">📎 Documents — click any thumbnail to view full screen</div>
+        <div class="doc-thumbs">${thumbs}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+ 
+/* ════════════════════════════════════════
+   DOC VIEWER MODAL
+════════════════════════════════════════ */
+const docModal = document.getElementById('doc-modal');
+function openDocModal(appId, startKey) {
+  const app = allApps.find(a=>a.id===appId); if(!app) return;
+  document.getElementById('dm-applicant-name').textContent = app.name+' — Documents';
+  document.getElementById('dm-tabs').innerHTML = DOC_KEYS.map(k=>{
+    const has = app.docs&&app.docs[k]&&app.docs[k].url;
+    return `<button class="dm-tab${has?'':' missing'}" id="dmtab-${k}" ${has?'':'disabled'} onclick="showDoc('${appId}','${k}',this)">${DOC_ICONS[k]} ${DOC_NAMES[k]}</button>`;
+  }).join('');
+  docModal.classList.add('open');
+  showDoc(appId, startKey, document.getElementById('dmtab-'+startKey));
+}
+function showDoc(appId, key, tabEl) {
+  const app=allApps.find(a=>a.id===appId); if(!app) return;
+  const d=app.docs&&app.docs[key];
+  const frame=document.getElementById('dm-frame');
+  document.querySelectorAll('.dm-tab').forEach(t=>t.classList.remove('active'));
+  if(tabEl) tabEl.classList.add('active');
+  if(!d||!d.url){frame.innerHTML=`<div class="dm-placeholder"><span>📭</span><span>Not uploaded</span></div>`;return;}
+  const isImg=d.type&&d.type.startsWith('image/'), isPdf=d.type==='application/pdf';
+  if(isImg) frame.innerHTML=`<img src="${esc(d.url)}" style="max-width:100%;max-height:100%;object-fit:contain"/>`;
+  else if(isPdf) frame.innerHTML=`<object data="${esc(d.url)}" type="application/pdf" style="width:100%;height:100%;border:none"><div class="dm-placeholder"><span>📄</span><span>PDF preview unavailable.</span><a href="${esc(d.url)}" target="_blank" style="color:var(--red);font-weight:600;margin-top:.5rem">Open PDF →</a></div></object>`;
+  else frame.innerHTML=`<div class="dm-placeholder"><span>📎</span><span>${esc(d.name)}</span><a href="${esc(d.url)}" target="_blank" style="color:var(--red);font-weight:600;margin-top:.5rem">Open File →</a></div>`;
+}
+function closeDocModal() { docModal.classList.remove('open'); document.getElementById('dm-frame').innerHTML='<div class="dm-placeholder"><span>📂</span><span>Select a document above</span></div>'; }
+docModal.addEventListener('click',e=>{if(e.target===docModal)closeDocModal();});
+ 
+/* ════════════════════════════════════════
+   EXPORT CSV
+════════════════════════════════════════ */
+function exportCSV() {
+  if(!allApps.length){toast('No applications to export','error');return;}
+  const hdr=['ID','Name','Country','Phone','Email','Programme','Status','Submitted','ID/Aadhar URL','Mark Sheet URL','Photo URL','Other URL'];
+  const rows=allApps.map(a=>[
+    a.id,cell(a.name),cell(a.country),cell(a.phone),cell(a.email||''),
+    cell(a.course||''),a.status,cell(a.createdAt||''),
+    cell(a.docs?.nrc?.url||''),cell(a.docs?.transcript?.url||''),
+    cell(a.docs?.photo?.url||''),cell(a.docs?.other?.url||'')
+  ]);
+  const csv=[hdr,...rows].map(r=>r.join(',')).join('\n');
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  const a=document.createElement('a');
+  a.href=url;a.download='mvm-applications-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();URL.revokeObjectURL(url);
+  toast('CSV exported ✓','success');
+}
+ 
+/* ════════════════════════════════════════
+   UTILS
+════════════════════════════════════════ */
+const esc  = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const cell = s => { const t=String(s||''); return(t.includes(',')||t.includes('"')||t.includes('\n'))?'"'+t.replace(/"/g,'""')+'"':t; };
+</script>
+</body>
+</html>
