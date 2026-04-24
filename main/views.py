@@ -3,9 +3,27 @@ import json
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+
+from litconnect.settings import SUPABASE_KEY, SUPABASE_URL
 from .models import Application
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
+from supabase import create_client
+
+
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def get_signed_url(path):
+    if not path:
+        return None
+    
+    res = supabase.storage.from_("litconnect").create_signed_url(
+        path,
+        60  # expires in 60 seconds
+    )
+    return res.get("signedURL")
+
 
 # Helper function to check if user is staff
 def is_staff(user):
@@ -60,22 +78,23 @@ def get_applications(request):
         # or a signed URL if querystring_auth=True.
         # We skip existence check to avoid extra API calls (faster).
         if app.nrc:
-            app_dict['nrc_url'] = app.nrc.url
+            app_dict['nrc_url'] = get_signed_url(app.nrc.name) if app.nrc else None
         else:
             app_dict['nrc_url'] = None
             
         if app.transcript:
-            app_dict['transcript_url'] = app.transcript.url
+            app_dict['transcript_url'] = get_signed_url(app.transcript.name)
         else:
             app_dict['transcript_url'] = None
             
         if app.photo:
-            app_dict['photo_url'] = app.photo.url
+            app_dict['photo_url'] = get_signed_url(app.photo.name) if app.photo else None
         else:
             app_dict['photo_url'] = None
             
         if app.other:
-            app_dict['other_url'] = app.other.url
+            app_dict['other_url'] = get_signed_url(app.other.name) if app.other else None
+            
         else:
             app_dict['other_url'] = None
             
