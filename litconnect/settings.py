@@ -3,6 +3,7 @@ import os
 import certifi
 import dj_database_url
 from dotenv import load_dotenv
+from botocore.config import Config
 
 import litconnect
 
@@ -150,8 +151,8 @@ STORAGES = {
             "bucket_name": SUPABASE_BUCKET_NAME,
             "endpoint_url": SUPABASE_BUCKET_ENDPOINT_URL,
             "region_name": SUPABASE_BUCKET_REGION,
+            "querystring_auth": True,
             "default_acl": "public-read",
-            "querystring_auth": False,  # IMPORTANT
         },
     },
     "staticfiles": {

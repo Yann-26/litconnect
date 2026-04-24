@@ -4,23 +4,37 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from litconnect.settings import SUPABASE_KEY, SUPABASE_URL
+import os
+
+import supabase
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
 from .models import Application
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from supabase import create_client
 
 
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("Supabase credentials missing. Check your .env file.")
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+def get_supabase():
+    return create_client(
+        os.getenv("SUPABASE_URL"),
+        os.getenv("SUPABASE_KEY")
+    )
 
 def get_signed_url(path):
     if not path:
         return None
     
+    supabase = get_supabase()
+    
     res = supabase.storage.from_("litconnect").create_signed_url(
         path,
-        60  # expires in 60 seconds
+        60
     )
     return res.get("signedURL")
 
@@ -56,11 +70,14 @@ def submit_application(request):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=400)
 
+
 @login_required
 @user_passes_test(is_staff)
 def get_applications(request):
     """Only logged-in staff can see the applicant list."""
     apps = []
+    # Using .url from the FileField uses Boto3 to generate the URL instantly 
+    # without making an external HTTP request.
     for app in Application.objects.all().order_by('-created_at'):
         app_dict = {
             'id': str(app.id),
@@ -71,33 +88,13 @@ def get_applications(request):
             'course': app.course,
             'status': app.status,
             'created_at': app.created_at.isoformat(),
+            
+            # Instantly grab the URLs via Django's storage backend
+            'nrc_url': app.nrc.url if app.nrc else None,
+            'transcript_url': app.transcript.url if app.transcript else None,
+            'photo_url': app.photo.url if app.photo else None,
+            'other_url': app.other.url if app.other else None,
         }
-        
-        # For S3 storage, we can directly return the URL.
-        # The .url property will generate a public URL if the bucket is public
-        # or a signed URL if querystring_auth=True.
-        # We skip existence check to avoid extra API calls (faster).
-        if app.nrc:
-            app_dict['nrc_url'] = get_signed_url(app.nrc.name) if app.nrc else None
-        else:
-            app_dict['nrc_url'] = None
-            
-        if app.transcript:
-            app_dict['transcript_url'] = get_signed_url(app.transcript.name)
-        else:
-            app_dict['transcript_url'] = None
-            
-        if app.photo:
-            app_dict['photo_url'] = get_signed_url(app.photo.name) if app.photo else None
-        else:
-            app_dict['photo_url'] = None
-            
-        if app.other:
-            app_dict['other_url'] = get_signed_url(app.other.name) if app.other else None
-            
-        else:
-            app_dict['other_url'] = None
-            
         apps.append(app_dict)
     
     return JsonResponse(apps, safe=False)
