@@ -142,7 +142,7 @@ SUPABASE_BUCKET_REGION=os.environ.get('SUPABASE_BUCKET_REGION', 'ap-southeast-1'
 
 # File Storage Settings using S3-compatible backend
 STORAGES = {
-    "default": {
+     "default": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {
             "access_key": SUPABASE_BUCKET_ACCESS_KEY,
@@ -150,8 +150,8 @@ STORAGES = {
             "bucket_name": SUPABASE_BUCKET_NAME,
             "endpoint_url": SUPABASE_BUCKET_ENDPOINT_URL,
             "region_name": SUPABASE_BUCKET_REGION,
-            "default_acl": "public-read",  # Important for public bucket access
-            "querystring_auth": True,      # Generates simple public URLs
+            "default_acl": None,
+            "querystring_auth": False,  # IMPORTANT
         },
     },
     "staticfiles": {
