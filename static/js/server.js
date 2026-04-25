@@ -547,32 +547,36 @@ function renderAdmin() {
             let previewHtml = '';
             
             if (url) {
-                // For S3, the URL is already absolute (starts with https://)
-                // No need to add /media/ or window.location.origin
-                // Just use as-is
                 const urlLower = url.toLowerCase();
                 const isImage = urlLower.match(/\.(jpg|jpeg|png|gif|webp|bmp)$/i);
                 const isPdf = urlLower.endsWith('.pdf');
                 
                 if (isImage) {
-                    previewHtml = `<div class="dt-preview"><img src="${escapeHtml(url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'dt-preview missing-prev\'><span class=\'miss-icon\'>🖼️</span><span>No image</span></div>'"></div>`;
+                    previewHtml = '<div class="dt-preview"><img src="' + escapeHtml(url) + '" loading="lazy" onerror="this.parentElement.innerHTML=\'<div class=&quot;dt-preview missing-prev&quot;><span class=&quot;miss-icon&quot;>🖼️</span><span>No image</span></div>\'"></div>';
                 } else if (isPdf) {
-                    previewHtml = `<div class="dt-preview pdf-prev"><span class="pdf-icon">📄</span><span>PDF</span></div>`;
+                    previewHtml = '<div class="dt-preview pdf-prev"><span class="pdf-icon">📄</span><span>PDF</span></div>';
                 } else {
-                    previewHtml = `<div class="dt-preview pdf-prev"><span class="pdf-icon">📎</span><span>File</span></div>`;
+                    previewHtml = '<div class="dt-preview pdf-prev"><span class="pdf-icon">📎</span><span>File</span></div>';
                 }
             } else {
-                previewHtml = `<div class="dt-preview missing-prev"><span class="miss-icon">❌</span><span>Missing</span></div>`;
+                previewHtml = '<div class="dt-preview missing-prev"><span class="miss-icon">❌</span><span>Missing</span></div>';
             }
             
-            const clickAttr = url ? `onclick="openDocModal('${a.id}','${k}')"` : '';
-            return `
-                <div class="doc-thumb" ${clickAttr}>
-                    <div class="dt-label">${DOC_ICONS[k]} ${DOC_NAMES[k]}</div>
-                    ${previewHtml}
-                    ${url ? '<div class="dt-open"><button class="dt-open-btn">🔍 View</button></div>' : ''}
-                </div>
-            `;
+            let clickAttr = '';
+            if (url) {
+                clickAttr = 'onclick="openDocModal(\'' + a.id + '\',\'' + k + '\')"';
+            }
+            
+            let viewButton = '';
+            if (url) {
+                viewButton = '<div class="dt-open"><button class="dt-open-btn">🔍 View</button></div>';
+            }
+            
+            return '<div class="doc-thumb" ' + clickAttr + '>' +
+                '<div class="dt-label">' + DOC_ICONS[k] + ' ' + DOC_NAMES[k] + '</div>' +
+                previewHtml +
+                viewButton +
+                '</div>';
         }).join('');
 
         return `

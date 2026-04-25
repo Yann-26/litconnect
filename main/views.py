@@ -26,18 +26,29 @@ def get_supabase():
         os.getenv("SUPABASE_KEY")
     )
 
+
 def get_signed_url(path):
+    """Generate fresh signed URL from Supabase"""
     if not path:
         return None
     
-    supabase = get_supabase()
-    
-    res = supabase.storage.from_("litconnect").create_signed_url(
-        path,
-        60
-    )
-    return res.get("signedURL")
-
+    try:
+        # Extract the relative path from full path
+        # If path starts with /media/, strip it
+        if path.startswith('/media/'):
+            path = path[len('/media/'):]
+        
+        supabase = get_supabase()
+        
+        # Important: path should be just the key, like "documents/nrc/filename.pdf"
+        res = supabase.storage.from_("litconnect").create_signed_url(
+            path,
+            3600  # 1 hour expiry
+        )
+        return res.get("signedURL") if res else None
+    except Exception as e:
+        print(f"Error generating signed URL: {e}")
+        return None
 
 # Helper function to check if user is staff
 def is_staff(user):
@@ -46,6 +57,7 @@ def is_staff(user):
 def home(request):
     """Serves the main index.html file."""
     return render(request, "index.html")
+
 
 @csrf_exempt
 def submit_application(request):
@@ -76,8 +88,6 @@ def submit_application(request):
 def get_applications(request):
     """Only logged-in staff can see the applicant list."""
     apps = []
-    # Using .url from the FileField uses Boto3 to generate the URL instantly 
-    # without making an external HTTP request.
     for app in Application.objects.all().order_by('-created_at'):
         app_dict = {
             'id': str(app.id),
@@ -89,7 +99,7 @@ def get_applications(request):
             'status': app.status,
             'created_at': app.created_at.isoformat(),
             
-            # Instantly grab the URLs via Django's storage backend
+            # Django's storage backend will generate proper URLs
             'nrc_url': app.nrc.url if app.nrc else None,
             'transcript_url': app.transcript.url if app.transcript else None,
             'photo_url': app.photo.url if app.photo else None,
@@ -98,6 +108,17 @@ def get_applications(request):
         apps.append(app_dict)
     
     return JsonResponse(apps, safe=False)
+
+
+def get_relative_path(file_field):
+    """Extract the relative path from a file field for Supabase."""
+    if not file_field:
+        return None
+    
+    # Get the path relative to MEDIA_ROOT
+    # This might need adjustment based on how boto3 stores files
+    full_path = file_field.name  # This should give you the path in the bucket
+    return full_path
 
 
 @login_required

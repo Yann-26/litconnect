@@ -144,15 +144,18 @@ SUPABASE_BUCKET_REGION=os.environ.get('SUPABASE_BUCKET_REGION', 'ap-southeast-1'
 # File Storage Settings using S3-compatible backend
 STORAGES = {
      "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "BACKEND": "litconnect.storage.SupabaseStorage",
         "OPTIONS": {
             "access_key": SUPABASE_BUCKET_ACCESS_KEY,
             "secret_key": SUPABASE_BUCKET_SECRET_KEY,
             "bucket_name": SUPABASE_BUCKET_NAME,
             "endpoint_url": SUPABASE_BUCKET_ENDPOINT_URL,
             "region_name": SUPABASE_BUCKET_REGION,
-            "querystring_auth": True,
-            "default_acl": "public-read",
+             "querystring_auth": False,
+            "default_acl": None,  # Don't set ACL at all for Supabase
+            "file_overwrite": False,
+            "signature_version": "s3v4",  # Add this
+            "custom_domain": None,  # Don't use custom domain
         },
     },
     "staticfiles": {
